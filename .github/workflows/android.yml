@@ -1,13 +1,35 @@
-name: Android debug APK (manual)
-# Native upstream builds/downloads are intentionally opt-in, not run on every push.
+name: Android debug APK
+
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/android.yml'
+      - 'android-overlay/**'
+      - 'scripts/bootstrap.py'
+      - 'scripts/prepare_android.py'
+      - 'scripts/package_guest.py'
+      - 'scripts/verify_apk.py'
+      - 'upstream.lock.json'
+      - 'gateway/src/**'
+      - 'guest/**'
+      - 'package.json'
+
 permissions:
   contents: read
+
+concurrency:
+  group: android-debug-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   android:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,11 +44,55 @@ jobs:
       - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
       - name: Install pinned upstream build prerequisites
-        run: sdkmanager 'platforms;android-37' 'build-tools;36.0.0' 'cmake;3.22.1'
-      - name: Fetch locked source, apply Agbot, and compile
-        run: python scripts/bootstrap.py --build
-      - uses: actions/upload-artifact@v7
+        run: |
+          mkdir -p build-evidence
+          sdkmanager 'platforms;android-37' 'build-tools;36.0.0' 'cmake;3.22.1' 2>&1 | tee build-evidence/sdk.log
+      - name: Fetch and prepare locked DroidVM
+        run: python -u scripts/bootstrap.py 2>&1 | tee build-evidence/preparation.log
+      - name: Compile real debug APK
+        run: |
+          cd upstream/DroidVM
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace --console=plain :app:assembleDebug 2>&1 | tee ../../build-evidence/gradle.log
+      - name: Inspect APK identity and signature
+        run: |
+          mkdir -p dist
+          mapfile -t apks < <(find upstream/DroidVM/app/build/outputs/apk/debug -maxdepth 1 -name '*.apk' -type f)
+          test "${#apks[@]}" -eq 1
+          cp "${apks[0]}" dist/Agbot-debug.apk
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging dist/Agbot-debug.apk | tee build-evidence/apk-badging.txt
+          grep -F "package: name='app.agbot.android'" build-evidence/apk-badging.txt
+          grep -F "launchable-activity: name='app.agbot.android.AgbotActivity'" build-evidence/apk-badging.txt
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs dist/Agbot-debug.apk | tee build-evidence/apk-signature.txt
+          "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c 4 dist/Agbot-debug.apk
+          (cd dist && sha256sum Agbot-debug.apk > SHA256SUMS)
+          unzip -l dist/Agbot-debug.apk > build-evidence/apk-entries.txt
+          cp build-evidence/apk-badging.txt build-evidence/apk-signature.txt dist/
+          printf 'APK built and signature checked. Installation, Gunyah boot and model login remain untested.\n' >> "$GITHUB_STEP_SUMMARY"
+          cat dist/SHA256SUMS >> "$GITHUB_STEP_SUMMARY"
+      - name: Record exact source provenance
+        if: always()
+        run: |
+          mkdir -p build-evidence
+          git rev-parse HEAD > build-evidence/agbot-commit.txt
+          cp upstream.lock.json build-evidence/
+          if test -e upstream/DroidVM/.git; then
+            git -C upstream/DroidVM rev-parse HEAD > build-evidence/droidvm-commit.txt
+            git -C upstream/DroidVM submodule status --recursive > build-evidence/submodules.txt
+            git -C upstream/DroidVM diff --stat > build-evidence/overlay-diff-stat.txt
+          fi
+      - name: Upload verified APK
+        uses: actions/upload-artifact@v7
         with:
-          name: Agbot-0.1.0-dev.1-debug
-          path: upstream/DroidVM/app/build/outputs/apk/debug/*.apk
+          name: Agbot-debug-${{ github.run_number }}
+          path: dist/
           if-no-files-found: error
+          retention-days: 30
+      - name: Upload build evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-build-evidence-${{ github.run_number }}
+          path: build-evidence/
+          if-no-files-found: warn
+          retention-days: 30
