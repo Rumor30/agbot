@@ -41,7 +41,8 @@ class TransformationTests(unittest.TestCase):
         out = transform_gradle(GRADLE)
         self.assertIn('namespace = "cn.classfun.droidvm"', out)
         self.assertIn('applicationId = "app.agbot.android"', out)
-        self.assertIn('versionCode = 2', out)
+        self.assertIn('versionCode = 3', out)
+        self.assertIn('versionName = "0.2.0-dev.2"', out)
     def test_rejects_changed_gradle_layout(self):
         with self.assertRaises(RuntimeError): transform_gradle(GRADLE.replace('generatedVersionCode', 'different'))
         with self.assertRaises(RuntimeError): transform_gradle(GRADLE + '\napplicationId = "cn.classfun.droidvm"')
