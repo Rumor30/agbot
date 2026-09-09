@@ -1,0 +1,35 @@
+name: Gateway and source checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ['22.16.0', '24.20.0']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Syntax and protocol, tool, lifecycle tests
+        run: |
+          npm run check
+          npm test
+          python -m unittest discover -s tests -v
+          bash -n guest/install.sh scripts/build-android.sh
+      - name: Parse original Android Java source (not an APK compilation)
+        run: java scripts/JavaSyntaxCheck.java $(find android-overlay -name '*.java')
+      - name: Package source-only guest bundle
+        run: python scripts/package_guest.py --output artifacts/agbot-guest.tar.gz
+      - uses: actions/upload-artifact@v7
+        with:
+          name: guest-source-node-${{ matrix.node }}
+          path: artifacts/agbot-guest.tar.gz
