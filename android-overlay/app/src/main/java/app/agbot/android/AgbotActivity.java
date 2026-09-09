@@ -340,7 +340,7 @@ public final class AgbotActivity extends Activity {
         }
         if (requestCode != EXPORT_GUEST) return;
         async(() -> {
-            try (InputStream in = getAssets().open("agbot/agbot-guest.tar.gz"); OutputStream out = getContentResolver().openOutputStream(target)) {
+            try (InputStream in = getAssets().open("agbot/agbot-guest.tgz"); OutputStream out = getContentResolver().openOutputStream(target)) {
                 if (out == null) throw new Exception("无法打开目标文件"); byte[] b = new byte[8192]; int n;
                 while ((n = in.read(b)) != -1) out.write(b, 0, n);
             }

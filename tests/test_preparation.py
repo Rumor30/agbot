@@ -74,7 +74,19 @@ class PreparationTests(unittest.TestCase):
         apply(self.checkout, self.commit, ROOT)
         self.assertEqual(first, (self.checkout / STATE).read_bytes())
         self.assertTrue((self.checkout / 'app/src/main/java/app/agbot/android/AgbotActivity.java').is_file())
-        self.assertTrue((self.checkout / 'app/src/main/assets/agbot/agbot-guest.tar.gz').is_file())
+        self.assertTrue((self.checkout / 'app/src/main/assets/agbot/agbot-guest.tgz').is_file())
+    def test_migrates_only_hash_verified_legacy_guest_asset(self):
+        apply(self.checkout, self.commit, ROOT)
+        modern = self.checkout / 'app/src/main/assets/agbot/agbot-guest.tgz'
+        legacy = modern.with_name('agbot-guest.tar.gz')
+        modern.rename(legacy)
+        state = json.loads((self.checkout / STATE).read_text())
+        files = state['files']
+        files[legacy.relative_to(self.checkout).as_posix()] = files.pop(modern.relative_to(self.checkout).as_posix())
+        (self.checkout / STATE).write_text(json.dumps(state))
+        apply(self.checkout, self.commit, ROOT)
+        self.assertTrue(modern.is_file())
+        self.assertFalse(legacy.exists())
     def test_wrong_commit_does_not_write(self):
         with self.assertRaises(RuntimeError): apply(self.checkout, 'f' * 40, ROOT)
         self.assertEqual((self.checkout / 'app/build.gradle.kts').read_text(), GRADLE)

@@ -17,6 +17,7 @@ ANDROID = '{http://schemas.android.com/apk/res/android}'
 TOOLS = '{http://schemas.android.com/tools}'
 STATE = '.agbot-overlay-state.json'
 APP_ID = 'app.agbot.android'
+LEGACY_GUEST = 'app/src/main/assets/agbot/agbot-guest.tar.gz'
 ET.register_namespace('android', ANDROID[1:-1])
 ET.register_namespace('tools', TOOLS[1:-1])
 
@@ -82,7 +83,9 @@ def plan(checkout: Path, root: Path = ROOT) -> dict[str, bytes]:
     outputs = {
         'app/build.gradle.kts': transform_gradle(git(checkout, 'show', 'HEAD:app/build.gradle.kts')).encode(),
         'app/src/main/AndroidManifest.xml': transform_manifest(git(checkout, 'show', 'HEAD:app/src/main/AndroidManifest.xml')),
-        'app/src/main/assets/agbot/agbot-guest.tar.gz': archive_bytes(root),
+        # AAPT transparently expands .gz assets and strips their extension.
+        # .tgz preserves the gzip bytes and the exact name used by AssetManager.
+        'app/src/main/assets/agbot/agbot-guest.tgz': archive_bytes(root),
     }
     for source in sorted((root / 'android-overlay').rglob('*')):
         if source.is_file():
@@ -102,6 +105,7 @@ def apply(checkout: Path, expected_commit: str, root: Path = ROOT) -> None:
     # Fail before the first write if any modified tracked/untracked file is not our exact
     # previously generated output. Never reset --hard, clean -fd, or silently merge a human edit.
     status = subprocess.check_output(['git', '-C', str(checkout), 'status', '--porcelain=v1', '-z', '--untracked-files=all']).decode()
+    retired = []
     for entry in status.split('\0'):
         if not entry:
             continue
@@ -109,10 +113,15 @@ def apply(checkout: Path, expected_commit: str, root: Path = ROOT) -> None:
         if name == STATE:
             continue
         current = checkout / name
-        if name not in outputs or not current.is_file() or current.is_symlink():
+        legacy = name == LEGACY_GUEST and name in old.get('files', {})
+        if (name not in outputs and not legacy) or not current.is_file() or current.is_symlink():
             raise RuntimeError(f'Unmanaged local change; preserve it before preparation: {name}')
         if digest(current.read_bytes()) != old.get('files', {}).get(name):
             raise RuntimeError(f'Human/unknown edit detected, left untouched: {name}')
+        if legacy:
+            if any(p.is_symlink() for p in current.parents if p != checkout.parent):
+                raise RuntimeError(f'Symlink in retired output path: {name}')
+            retired.append(current)
     for name, data in outputs.items():
         target = checkout / name
         if any(p.is_symlink() for p in [target, *target.parents] if p != checkout.parent):
@@ -124,6 +133,8 @@ def apply(checkout: Path, expected_commit: str, root: Path = ROOT) -> None:
             f.flush()
             os.fsync(f.fileno())
         os.replace(temp, target)
+    for target in retired:
+        target.unlink()  # Only the hash-verified former generated Guest asset.
     state_path.write_text(json.dumps({'commit': expected_commit, 'files': {k: digest(v) for k, v in outputs.items()}}, indent=2) + '\n')
     print(f'Agbot overlay applied to {expected_commit}. This is source preparation, NOT an APK build.')
 
