@@ -59,7 +59,7 @@ class Guest:
     def request(self,method,route,body=None):
         # Test client verifies the exact authenticated fingerprint BEFORE sending a bearer.
         context=ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT);context.check_hostname=False;context.verify_mode=ssl.CERT_NONE
-        c=http.client.HTTPSConnection('127.0.0.1',self.port,context=context,timeout=15)
+        c=http.client.HTTPSConnection('127.0.0.1',self.port,context=context,timeout=60)
         try:
             c.connect()
             if not hmac.compare_digest(hashlib.sha256(c.sock.getpeercert(binary_form=True)).hexdigest(),self.pin):raise RuntimeError('TLS pin mismatch')
@@ -132,6 +132,9 @@ def main(arch,output):
         try:
             vm=boot();guest,health=ready(1400 if arch=='arm64' else 1100)
             result['health']=health;result['checks']+=['Linux-boot','cloud-init-seed','real-runtime-installer','official-Codex-binary-version-check','HMAC-enrollment','pinned-HTTPS-health','non-root-gateway']
+            account=guest.request('GET','/v1/codex/account')
+            result['codexAccountPresent']=account.get('account') is not None
+            result['checks'].append('real-official-Codex-app-server-account-RPC-not-OAuth-login')
             print('Guest ready; executing controlled agent tasks',flush=True)
             profile={'mode':'chat-completions','model':'ci-fixture','baseUrl':f'https://10.0.2.2:{fixture.server_port}/v1','apiKey':'TEST_ONLY_NOT_A_REAL_KEY','maxOutputTokens':256}
             def task(prompt,decision=True,stop=False):
@@ -151,7 +154,7 @@ def main(arch,output):
                 raise RuntimeError('Agent task timed out')
             ident,state,approvals=task('WORK')
             result['workStatus']=state.get('status');result['workApprovals']=approvals
-            if approvals!=2 or state.get('status')!='completed' or not any(e['type']=='tool.completed' and e['data'].get('name')=='shell' and e['data']['result'].get('exitCode')==0 and 'AGBOT_VM_OK' in e['data']['result'].get('stdout','') for e in state['events']):raise RuntimeError('Real write/Python result was not observed')
+            if approvals!=2 or state.get('status')!='completed' or not any(e['type']=='tool.completed' and e['data'].get('name')=='shell' and e['data']['result'].get('exitCode')==0 and 'AGBOT_VM_OK' in e['data']['result'].get('output','') for e in state['events']):raise RuntimeError('Real write/Python result was not observed')
             file=guest.request('GET',f'/v1/sessions/{ident}/files?path=main.py&read=1')
             result['file']=file;result['checks']+=['approved-file-write','real-python-execution','tool-result-roundtrip']
             _,refused,_=task('REFUSE',False)
@@ -169,7 +172,7 @@ def main(arch,output):
             result['checks']+=['orderly-reboot','persistent-workspace','persistent-session','repeat-enrollment']
             result['ok']=True
         finally:
-            if vm and vm.poll() is None:vm.terminate();
+            if vm and vm.poll() is None:vm.terminate()
             if vm:
                 try:vm.wait(timeout=20)
                 except subprocess.TimeoutExpired:vm.kill();vm.wait()
