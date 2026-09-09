@@ -1,0 +1,14 @@
+{
+  "name": "agbot",
+  "version": "0.1.0-dev.1",
+  "private": true,
+  "type": "module",
+  "description": "Android-first cloud agent with a local DroidVM Linux computer",
+  "license": "GPL-3.0-or-later",
+  "engines": { "node": ">=22.16.0" },
+  "scripts": {
+    "test": "node --test gateway/test/*.test.mjs",
+    "check": "node scripts/check.mjs",
+    "start": "node gateway/src/main.mjs"
+  }
+}

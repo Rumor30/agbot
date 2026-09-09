@@ -1,0 +1,3 @@
+[submodule "upstream/DroidVM"]
+	path = upstream/DroidVM
+	url = https://github.com/Droid-VM/DroidVM.git

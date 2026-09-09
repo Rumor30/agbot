@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-09-09",
+  "nodeVersion": "24.20.0",
+  "nodeSource": "https://nodejs.org/en/blog/release/v24.20.0",
+  "nodeSha256": {
+    "arm64": "5f4ddab610c1ab2016b3c227cebdbf6d9495161487e4739c7b90090595f465f7",
+    "x64": "2f2c0da162318f0de47665410c7c8c2ed3d36c8f3105de4bbc61176c70a7cbf2"
+  },
+  "codexNpmPackage": "@openai/codex",
+  "codexVersion": "0.153.4",
+  "codexRelease": "https://github.com/openai/codex/releases/tag/rust-v0.153.4",
+  "note": "Versions and Node checksums were read from primary release sources. Downloads and guest installation have not been executed in the authoring environment. npm resolves platform optional dependencies; lock and installed package integrity must be retained for a production release."
+}

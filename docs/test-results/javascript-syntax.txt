@@ -1,0 +1,5 @@
+
+> agbot@0.1.0-dev.1 check
+> node scripts/check.mjs
+
+JavaScript syntax checks passed.

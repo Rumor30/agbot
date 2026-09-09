@@ -1,0 +1,2 @@
+Bash syntax: pass
+Python byte-compilation: pass

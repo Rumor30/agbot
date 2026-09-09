@@ -1,0 +1,332 @@
+
+> agbot@0.1.0-dev.1 test
+> node --test gateway/test/*.test.mjs
+
+TAP version 13
+# Subtest: Codex mock: initialization precedes device-code OAuth, account and model RPCs
+ok 1 - Codex mock: initialization precedes device-code OAuth, account and model RPCs
+  ---
+  duration_ms: 36.110526
+  type: 'test'
+  ...
+# Subtest: Codex mock: starts, streams and resumes a persisted thread with pinned safe enums
+ok 2 - Codex mock: starts, streams and resumes a persisted thread with pinned safe enums
+  ---
+  duration_ms: 34.082047
+  type: 'test'
+  ...
+# Subtest: Codex mock: command/file approvals are one-shot, never session-wide
+ok 3 - Codex mock: command/file approvals are one-shot, never session-wide
+  ---
+  duration_ms: 31.660467
+  type: 'test'
+  ...
+# Subtest: Codex mock: unsupported permission expansion is denied without prompting an auto-accept
+ok 4 - Codex mock: unsupported permission expansion is denied without prompting an auto-accept
+  ---
+  duration_ms: 41.780535
+  type: 'test'
+  ...
+# Subtest: Codex mock: cancellation interrupts the active turn
+ok 5 - Codex mock: cancellation interrupts the active turn
+  ---
+  duration_ms: 153.15721
+  type: 'test'
+  ...
+# Subtest: Codex mock: process disconnect fails the task instead of reporting success
+ok 6 - Codex mock: process disconnect fails the task instead of reporting success
+  ---
+  duration_ms: 31.550163
+  type: 'test'
+  ...
+# Subtest: missing Codex binary reports a connection failure rather than hanging
+ok 7 - missing Codex binary reports a connection failure rather than hanging
+  ---
+  duration_ms: 2.158969
+  type: 'test'
+  ...
+# Subtest: agent waits for approval, writes a real file, returns result, and completes
+ok 8 - agent waits for approval, writes a real file, returns result, and completes
+  ---
+  duration_ms: 21.419075
+  type: 'test'
+  ...
+# Subtest: declining an approval does not execute a write or silently retry
+ok 9 - declining an approval does not execute a write or silently retry
+  ---
+  duration_ms: 14.973645
+  type: 'test'
+  ...
+# Subtest: stop cancels pending approval and repairs missing tool results without execution
+ok 10 - stop cancels pending approval and repairs missing tool results without execution
+  ---
+  duration_ms: 14.134539
+  type: 'test'
+  ...
+# Subtest: idempotency and workspace locks stop duplicate/concurrent writes
+ok 11 - idempotency and workspace locks stop duplicate/concurrent writes
+  ---
+  duration_ms: 14.760809
+  type: 'test'
+  ...
+# Subtest: unknown tools yield an error result instead of invoking arbitrary host code
+ok 12 - unknown tools yield an error result instead of invoking arbitrary host code
+  ---
+  duration_ms: 3.879867
+  type: 'test'
+  ...
+# Subtest: upstream errors fail the task and redact known credentials in events
+ok 13 - upstream errors fail the task and redact known credentials in events
+  ---
+  duration_ms: 2.827632
+  type: 'test'
+  ...
+# Subtest: model tool round limit is a visible failure, not a false success
+ok 14 - model tool round limit is a visible failure, not a false success
+  ---
+  duration_ms: 4.087816
+  type: 'test'
+  ...
+# Subtest: restart persists sessions and marks unfinished tasks interrupted without replay
+ok 15 - restart persists sessions and marks unfinished tasks interrupted without replay
+  ---
+  duration_ms: 1.764712
+  type: 'test'
+  ...
+# Subtest: corrupt persisted data fails explicitly instead of silently deleting sessions
+ok 16 - corrupt persisted data fails explicitly instead of silently deleting sessions
+  ---
+  duration_ms: 0.644157
+  type: 'test'
+  ...
+# Subtest: approval is session-bound, single-use and boolean-only
+ok 17 - approval is session-bound, single-use and boolean-only
+  ---
+  duration_ms: 0.292886
+  type: 'test'
+  ...
+# Subtest: approval expiration denies rather than implicitly accepting
+ok 18 - approval expiration denies rather than implicitly accepting
+  ---
+  duration_ms: 40.390743
+  type: 'test'
+  ...
+# Subtest: production entry refuses running as root before creating state
+ok 19 - production entry refuses running as root before creating state
+  ---
+  duration_ms: 59.241682
+  type: 'test'
+  ...
+# Subtest: production initialization creates private credentials without printing the token
+ok 20 - production initialization creates private credentials without printing the token
+  ---
+  duration_ms: 128.217246
+  type: 'test'
+  ...
+# Subtest: production rejects exposed or symlinked token files
+ok 21 - production rejects exposed or symlinked token files
+  ---
+  duration_ms: 180.649793
+  type: 'test'
+  ...
+# Subtest: real non-root production gateway serves authenticated health and shuts down
+ok 22 - real non-root production gateway serves authenticated health and shuts down
+  ---
+  duration_ms: 180.030412
+  type: 'test'
+  ...
+# Subtest: Responses keeps reasoning items, call IDs and encrypted content on replay
+ok 23 - Responses keeps reasoning items, call IDs and encrypted content on replay
+  ---
+  duration_ms: 19.613612
+  type: 'test'
+  ...
+# Subtest: Responses non-streaming compatible endpoint returns text
+ok 24 - Responses non-streaming compatible endpoint returns text
+  ---
+  duration_ms: 0.611469
+  type: 'test'
+  ...
+# Subtest: Responses fails on truncated or incomplete stream instead of executing calls
+ok 25 - Responses fails on truncated or incomplete stream instead of executing calls
+  ---
+  duration_ms: 1.272732
+  type: 'test'
+  ...
+# Subtest: Chat Completions assembles fragmented parallel function calls
+ok 26 - Chat Completions assembles fragmented parallel function calls
+  ---
+  duration_ms: 0.880008
+  type: 'test'
+  ...
+# Subtest: Chat requires finish_reason and rejects token-truncated tool JSON
+ok 27 - Chat requires finish_reason and rejects token-truncated tool JSON
+  ---
+  duration_ms: 0.898616
+  type: 'test'
+  ...
+# Subtest: Anthropic assembles input JSON and preserves signed thinking blocks
+ok 28 - Anthropic assembles input JSON and preserves signed thinking blocks
+  ---
+  duration_ms: 0.892757
+  type: 'test'
+  ...
+# Subtest: Anthropic rejects missing message_stop and malformed tool JSON
+ok 29 - Anthropic rejects missing message_stop and malformed tool JSON
+  ---
+  duration_ms: 1.724033
+  type: 'test'
+  ...
+# Subtest: provider headers and tool schemas match each wire protocol
+ok 30 - provider headers and tool schemas match each wire protocol
+  ---
+  duration_ms: 0.988009
+  type: 'test'
+  ...
+# Subtest: HTTP failures do not echo response bodies containing credentials
+ok 31 - HTTP failures do not echo response bodies containing credentials
+  ---
+  duration_ms: 0.482377
+  type: 'test'
+  ...
+# Subtest: invalid duplicate tool IDs do not mutate committed history
+ok 32 - invalid duplicate tool IDs do not mutate committed history
+  ---
+  duration_ms: 0.783885
+  type: 'test'
+  ...
+# Subtest: normalizes API bases and complete endpoint paths without duplicating v1
+ok 33 - normalizes API bases and complete endpoint paths without duplicating v1
+  ---
+  duration_ms: 0.950793
+  type: 'test'
+  ...
+# Subtest: cloud endpoints reject cleartext, embedded credentials and credential queries
+ok 34 - cloud endpoints reject cleartext, embedded credentials and credential queries
+  ---
+  duration_ms: 0.402969
+  type: 'test'
+  ...
+# Subtest: profile validates mode, model and header injection
+ok 35 - profile validates mode, model and header injection
+  ---
+  duration_ms: 0.299956
+  type: 'test'
+  ...
+# Subtest: bridge token comparison is length checked and exact
+ok 36 - bridge token comparison is length checked and exact
+  ---
+  duration_ms: 0.153168
+  type: 'test'
+  ...
+# Subtest: redacts known secrets and bearer headers
+ok 37 - redacts known secrets and bearer headers
+  ---
+  duration_ms: 0.291343
+  type: 'test'
+  ...
+# Subtest: shell environment does not inherit server secrets
+ok 38 - shell environment does not inherit server secrets
+  ---
+  duration_ms: 0.146708
+  type: 'test'
+  ...
+# Subtest: identifiers reject traversal and separators
+ok 39 - identifiers reject traversal and separators
+  ---
+  duration_ms: 0.236491
+  type: 'test'
+  ...
+# Subtest: bridge rejects missing/incorrect auth and all browser origins
+ok 40 - bridge rejects missing/incorrect auth and all browser origins
+  ---
+  duration_ms: 29.897917
+  type: 'test'
+  ...
+# Subtest: HTTP task lifecycle works on a real local listener using a mock model
+ok 41 - HTTP task lifecycle works on a real local listener using a mock model
+  ---
+  duration_ms: 25.421744
+  type: 'test'
+  ...
+# Subtest: HTTP body/schema/path/cursor validation does not execute file escapes
+ok 42 - HTTP body/schema/path/cursor validation does not execute file escapes
+  ---
+  duration_ms: 12.019635
+  type: 'test'
+  ...
+# Subtest: binding a non-loopback gateway without TLS fails closed
+ok 43 - binding a non-loopback gateway without TLS fails closed
+  ---
+  duration_ms: 0.517769
+  type: 'test'
+  ...
+# Subtest: SSE parses byte-split Chinese text and CRLF boundaries
+ok 44 - SSE parses byte-split Chinese text and CRLF boundaries
+  ---
+  duration_ms: 5.366847
+  type: 'test'
+  ...
+# Subtest: SSE supports multiline data, comments and final frame without double newline
+ok 45 - SSE supports multiline data, comments and final frame without double newline
+  ---
+  duration_ms: 0.569055
+  type: 'test'
+  ...
+# Subtest: SSE bounds event and unterminated-line memory
+ok 46 - SSE bounds event and unterminated-line memory
+  ---
+  duration_ms: 0.72608
+  type: 'test'
+  ...
+# Subtest: file tools list/read/write real files and verify hashes
+ok 47 - file tools list/read/write real files and verify hashes
+  ---
+  duration_ms: 5.086931
+  type: 'test'
+  ...
+# Subtest: file paths reject traversal, absolute paths, symlinks and malformed arguments
+ok 48 - file paths reject traversal, absolute paths, symlinks and malformed arguments
+  ---
+  duration_ms: 0.958615
+  type: 'test'
+  ...
+# Subtest: write approval becomes stale if the file changes
+ok 49 - write approval becomes stale if the file changes
+  ---
+  duration_ms: 1.300714
+  type: 'test'
+  ...
+# Subtest: read refuses binary and oversized files
+ok 50 - read refuses binary and oversized files
+  ---
+  duration_ms: 0.981999
+  type: 'test'
+  ...
+# Subtest: shell returns exit codes, stdout, stderr and bounded output
+ok 51 - shell returns exit codes, stdout, stderr and bounded output
+  ---
+  duration_ms: 9.888136
+  type: 'test'
+  ...
+# Subtest: shell timeout kills the process group
+ok 52 - shell timeout kills the process group
+  ---
+  duration_ms: 72.382139
+  type: 'test'
+  ...
+# Subtest: shell cancellation and pre-cancellation do not leave a task running
+ok 53 - shell cancellation and pre-cancellation do not leave a task running
+  ---
+  duration_ms: 53.952921
+  type: 'test'
+  ...
+1..53
+# tests 53
+# suites 0
+# pass 53
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 657.132516

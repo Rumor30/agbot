@@ -1,0 +1,20 @@
+test_archive_is_deterministic_source_only (test_preparation.PackagingTests.test_archive_is_deterministic_source_only) ... ok
+test_install_requires_explicit_guest_flag_before_mutation (test_preparation.PackagingTests.test_install_requires_explicit_guest_flag_before_mutation) ... ok
+test_overlay_xml_files_parse (test_preparation.PackagingTests.test_overlay_xml_files_parse) ... ok
+test_applies_twice_idempotently (test_preparation.PreparationTests.test_applies_twice_idempotently) ... ok
+test_human_edit_survives (test_preparation.PreparationTests.test_human_edit_survives) ... ok
+test_source_checkout_symlink_refused (test_preparation.PreparationTests.test_source_checkout_symlink_refused) ... ok
+test_untracked_user_file_is_preserved (test_preparation.PreparationTests.test_untracked_user_file_is_preserved) ... ok
+test_wrong_commit_does_not_write (test_preparation.PreparationTests.test_wrong_commit_does_not_write) ... ok
+test_manifest_uses_one_launcher_and_disables_backup (test_preparation.TransformationTests.test_manifest_uses_one_launcher_and_disables_backup) ... ok
+test_preserves_namespace_and_rebrands_app (test_preparation.TransformationTests.test_preserves_namespace_and_rebrands_app) ... ok
+test_rejects_changed_gradle_layout (test_preparation.TransformationTests.test_rejects_changed_gradle_layout) ... ok
+test_unknown_manifest_entry_is_rejected (test_preparation.TransformationTests.test_unknown_manifest_entry_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.210s
+
+OK
+Agbot overlay applied to 9f4605909809b52b4f3caeb30c17951c453496f8. This is source preparation, NOT an APK build.
+Agbot overlay applied to 9f4605909809b52b4f3caeb30c17951c453496f8. This is source preparation, NOT an APK build.
+Agbot overlay applied to 9f4605909809b52b4f3caeb30c17951c453496f8. This is source preparation, NOT an APK build.

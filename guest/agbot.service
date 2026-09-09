@@ -1,0 +1,35 @@
+# Agbot-managed service. SPDX-License-Identifier: GPL-3.0-or-later
+[Unit]
+Description=Agbot cloud agent gateway inside the Linux guest
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=agbot
+Group=agbot
+WorkingDirectory=/opt/agbot/current
+Environment=HOME=/home/agbot
+Environment=PATH=/opt/agbot-runtime/node/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=/etc/agbot/gateway.env
+ExecStart=/opt/agbot-runtime/node/bin/node /opt/agbot/current/gateway/src/main.mjs
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ReadWritePaths=/home/agbot /var/lib/agbot
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=true
+KillMode=control-group
+TimeoutStopSec=20
+# Do not forbid user namespaces: Codex's Linux sandbox may need them.
+# Do not enable MemoryDenyWriteExecute: V8 requires executable JIT memory.
+
+[Install]
+WantedBy=multi-user.target

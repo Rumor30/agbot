@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "checkedAt": "2026-09-09",
+  "droidvm": {
+    "repository": "https://github.com/Droid-VM/DroidVM.git",
+    "branch": "master",
+    "commit": "72391c44f3a08994f513cd61205496e6f7dfd5ae",
+    "committedAt": "2026-09-06T07:08:28Z",
+    "tree": "2ae3964b41cbe6780d8bfca2f7bd9379d53470cb",
+    "compileSdk": 37,
+    "minimumSdk": 33,
+    "license": "GPL-3.0-or-later; preserve upstream notices and ADDITIONAL-PERMISSIONS",
+    "submodules": "Use the gitlinks in this exact commit; never update with --remote.",
+    "androidGradlePlugin": "9.2.1",
+    "kotlin": "2.2.10",
+    "javaToolchain": 21
+  },
+  "codex": {
+    "transport": "official codex app-server, JSON-RPC over stdio",
+    "auth": "account/login/start type=chatgptDeviceCode",
+    "binaryVersion": "0.153.4",
+    "status": "Pinned generated protocol schemas verified. Stdio fixture tests pass; real CLI/account/ARM64 execution not yet validated.",
+    "releaseTag": "rust-v0.153.4",
+    "publishedAt": "2026-09-04T23:25:48Z",
+    "approvalPolicy": "untrusted",
+    "sandbox": "workspace-write",
+    "schemaNote": "Mutable online examples use unlessTrusted/workspaceWrite, but this release generated schemas use untrusted/workspace-write. Use release schemas, not mixed versions."
+  }
+}
