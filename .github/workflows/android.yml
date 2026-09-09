@@ -51,9 +51,9 @@ jobs:
         run: |
           mkdir -p build-evidence
           sdkmanager --version | tee build-evidence/sdkmanager-version.txt
-          sdkmanager --list --channel=3 > build-evidence/sdk-packages.txt
+          sdkmanager --list > build-evidence/sdk-packages.txt
           grep -E 'platforms;android-(36|37)|cmdline-tools;' build-evidence/sdk-packages.txt || true
-          sdkmanager 'platforms;android-37' 'build-tools;36.0.0' 'cmake;3.22.1' 2>&1 | tee build-evidence/sdk.log
+          sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0' 'cmake;3.22.1' 2>&1 | tee build-evidence/sdk.log
       - name: Fetch and prepare locked DroidVM
         run: python -u scripts/bootstrap.py 2>&1 | tee build-evidence/preparation.log
       - name: Compile real debug APK
