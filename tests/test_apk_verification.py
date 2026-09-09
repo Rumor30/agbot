@@ -13,18 +13,28 @@ from verify_apk import inspect, verify_elf, REQUIRED_ELF
 from package_guest import archive_bytes
 
 
-def synthetic_elf(machine=183):
-    data = bytearray(4096)
+def synthetic_elf(machine=183, size=4096):
+    data = bytearray(size)
     data[:7] = b'\x7fELF\x02\x01\x01'
-    struct.pack_into('<H', data, 18, machine)
+    struct.pack_into('<HH', data, 16, 3, machine)
     struct.pack_into('<Q', data, 32, 64)
     struct.pack_into('<HH', data, 54, 56, 1)
+    struct.pack_into('<IIQQQQQQ', data, 64, 1, 5, 0, 0, 0, size, size, 4096)
     return bytes(data)
 
 
 class ElfTests(unittest.TestCase):
     def test_header_accepts_arm64(self):
         self.assertEqual(verify_elf(synthetic_elf(), 'fixture')['machine'], 183)
+
+    def test_small_compatibility_shim_is_accepted(self):
+        self.assertEqual(verify_elf(synthetic_elf(size=512), 'fixture')['bytes'], 512)
+
+    def test_missing_executable_segment_is_rejected(self):
+        data = bytearray(synthetic_elf())
+        struct.pack_into('<I', data, 68, 4)  # Read-only, not executable.
+        with self.assertRaisesRegex(ValueError, 'no nonempty executable'):
+            verify_elf(data, 'fixture')
 
     def test_rejects_wrong_architecture_or_placeholder(self):
         for data in [b'', b'\x7fELF', synthetic_elf(62), synthetic_elf()[:100]]:

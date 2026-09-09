@@ -29,14 +29,25 @@ def require(condition: bool, message: str) -> None:
 
 
 def verify_elf(data: bytes, name: str) -> dict:
-    require(len(data) >= 4096 and data[:4] == b'\x7fELF', f'{name}: not a complete ELF binary')
+    require(len(data) >= 64 and data[:4] == b'\x7fELF', f'{name}: not a complete ELF header')
     require(data[4] == 2 and data[5] == 1, f'{name}: expected little-endian ELF64')
     machine = struct.unpack_from('<H', data, 18)[0]
     require(machine == ARM64_MACHINE, f'{name}: expected AArch64, got machine {machine}')
+    require(struct.unpack_from('<H', data, 16)[0] in (2, 3), f'{name}: not an executable or shared object')
     phoff = struct.unpack_from('<Q', data, 32)[0]
     phsize, phnum = struct.unpack_from('<HH', data, 54)
     require(phsize == 56 and phnum > 0 and 64 <= phoff <= len(data) - phsize * phnum,
             f'{name}: invalid ELF program header table')
+    # Legitimate compatibility shims can be smaller than a filesystem page.
+    # Validate loadable executable segments instead of imposing an arbitrary size.
+    executable = False
+    for i in range(phnum):
+        kind, flags, offset, _va, _pa, filesz, memsz, _align = struct.unpack_from('<IIQQQQQQ', data, phoff + i * phsize)
+        if kind == 1:  # PT_LOAD
+            require(filesz <= memsz and offset <= len(data) and filesz <= len(data) - offset,
+                    f'{name}: invalid or truncated load segment')
+            executable = executable or bool(flags & 1 and filesz)
+    require(executable, f'{name}: no nonempty executable load segment')
     return {'bytes': len(data), 'machine': machine, 'sha256': hashlib.sha256(data).hexdigest()}
 
 
