@@ -37,8 +37,8 @@ def transform_gradle(text: str) -> str:
     if 'namespace = "cn.classfun.droidvm"' not in text:
         raise RuntimeError('DroidVM namespace changed; review JNI and manifest class resolution first')
     text = replace_once(text, 'applicationId = "cn.classfun.droidvm"', f'applicationId = "{APP_ID}"')
-    text = replace_once(text, 'versionCode = generatedVersionCode', 'versionCode = 2')
-    return replace_once(text, 'versionName = generatedVersionName', 'versionName = "0.2.0-dev.1"')
+    text = replace_once(text, 'versionCode = generatedVersionCode', 'versionCode = 3')
+    return replace_once(text, 'versionName = generatedVersionName', 'versionName = "0.2.0-dev.2"')
 
 def transform_gvisor(data: str) -> bytes:
     return replace_once(data, 'var bindHost = v6 ? "[::]" : "0.0.0.0";',
