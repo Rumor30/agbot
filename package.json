@@ -1,6 +1,6 @@
 {
   "name": "agbot",
-  "version": "0.1.0-dev.1",
+  "version": "0.2.0-dev.1",
   "private": true,
   "type": "module",
   "description": "Android-first cloud agent with a local DroidVM Linux computer",

@@ -35,7 +35,7 @@ public final class AgbotActivity extends Activity {
     private static final int BG = 0xff10151b, CARD = 0xff1b232d, INK = 0xffedf3f8, MUTED = 0xff9fafbf, ACCENT = 0xff70dfb5;
     private static final String[] MODES = {"codex", "responses", "chat-completions", "anthropic"};
     private static final String[] LABELS = {"Codex OAuth", "OpenAI Responses", "Chat Completions", "Anthropic Messages"};
-    private static final int EXPORT_GUEST = 7001, IMPORT_PAIRING = 7002;
+    private static final int EXPORT_GUEST = 7001, IMPORT_PAIRING = 7002, EXPORT_DIAGNOSTICS = 7003;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService io = Executors.newFixedThreadPool(4);
     private final AtomicBoolean polling = new AtomicBoolean(false);
@@ -43,7 +43,7 @@ public final class AgbotActivity extends Activity {
     private volatile JSONObject config = new JSONObject();
     private LinearLayout root, page, messages, approvalArea;
     private ScrollView chatScroll;
-    private TextView status, streaming;
+    private TextView status, streaming, computerProgress;
     private EditText composer;
     private Button send;
     private volatile String sessionId = "";
@@ -53,7 +53,7 @@ public final class AgbotActivity extends Activity {
     private volatile long cursor = 0;
     private boolean resumed = false, destroyed = false, settingsReadable = true;
     private final Runnable pulse = new Runnable() {
-        public void run() { if (!resumed || destroyed) return; if (tab.equals("chat") && !sessionId.isEmpty()) poll(); main.postDelayed(this, 1200); }
+        public void run() { if (!resumed || destroyed) return; if (tab.equals("computer")) refreshComputer(); if (tab.equals("chat") && !sessionId.isEmpty()) poll(); main.postDelayed(this, 1200); }
     };
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved); secrets = new SecretStore(this);
@@ -77,7 +77,7 @@ public final class AgbotActivity extends Activity {
         navigation.addView(button("设置", () -> show("settings")), weighted()); root.addView(navigation);
         show("chat"); if (loadError != null) error(loadError);
     }
-    @Override protected void onResume() { super.onResume(); resumed = true; main.removeCallbacks(pulse); main.post(pulse); }
+    @Override protected void onResume() { super.onResume(); resumed = true; try { config=secrets.read(); } catch(Exception e){ settingsReadable=false; error("读取已保存设置失败；没有覆盖原数据"); } main.removeCallbacks(pulse); main.post(pulse); }
     @Override protected void onPause() { resumed = false; main.removeCallbacks(pulse); super.onPause(); }
     @Override protected void onDestroy() { destroyed = true; main.removeCallbacksAndMessages(null); io.shutdownNow(); super.onDestroy(); }
     private int dp(int n) { return Math.round(n * getResources().getDisplayMetrics().density); }
@@ -98,12 +98,10 @@ public final class AgbotActivity extends Activity {
         e.setPadding(dp(12), dp(9), dp(12), dp(9)); e.setBackground(background(CARD)); parent.addView(e, new LinearLayout.LayoutParams(-1, dp(50))); return e;
     }
     private LinearLayout scrollingPage() { ScrollView scroll = new ScrollView(this); LinearLayout content = column(); scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(-1, -1)); return content; }
-    private synchronized JSONObject snapshot() throws Exception { return new JSONObject(config.toString()); }
+    private synchronized JSONObject snapshot() throws Exception { config=secrets.read(); return new JSONObject(config.toString()); }
     private synchronized void put(String key, Object value) throws Exception {
         if (!settingsReadable) throw new Exception("旧设置解密失败，禁止覆盖");
-        JSONObject next = new JSONObject(config.toString());
-        if (value == null) next.remove(key); else next.put(key, value);
-        secrets.write(next); config = next;
+        config=secrets.update(new JSONObject().put(key,value==null?JSONObject.NULL:value));
     }
     private void error(String message) { if (!destroyed) { status.setText(message); status.setTextColor(0xffffb8a9); } }
     private void healthy(String message) { if (!destroyed) { status.setText(message); status.setTextColor(ACCENT); } }
@@ -117,6 +115,7 @@ public final class AgbotActivity extends Activity {
     }
     private JSONObject request(String method, String path, JSONObject body) throws Exception { return new GatewayClient(snapshot()).request(method, path, body); }
     private void show(String section) {
+        try { config=secrets.read(); } catch(Exception e) { settingsReadable=false; error("读取设置失败，原数据保留"); return; }
         viewGeneration++; tab = section; page.removeAllViews(); streaming = null;
         if (section.equals("chat")) showChat();
         else if (section.equals("settings")) showSettings();
@@ -137,7 +136,8 @@ public final class AgbotActivity extends Activity {
         if (sessionId.isEmpty()) {
             messages.addView(text("让 AI 使用你的 Linux 电脑", 22, INK));
             messages.addView(text("用对话描述任务，查看执行过程，在写入或运行命令前确认。模型在云端，项目文件在手机虚拟机中。", 15, MUTED));
-            messages.addView(button("配置模型与 Computer", () -> show("settings")));
+            messages.addView(button("准备 / 查看本地 Computer", () -> show("computer")));
+            messages.addView(button("配置云模型", () -> show("settings")));
         }
         approvalArea = column(); page.addView(approvalArea);
         composer = new EditText(this); composer.setTextColor(INK); composer.setHintTextColor(MUTED);
@@ -175,8 +175,7 @@ public final class AgbotActivity extends Activity {
                 if (pendingId.isEmpty()) {
                     pendingId = UUID.randomUUID().toString();
                     synchronized (this) {
-                        JSONObject next = snapshot(); next.put("outboxRequestId", pendingId); next.put("outboxPrompt", prompt);
-                        secrets.write(next); config = next;
+                        config=secrets.update(new JSONObject().put("outboxRequestId",pendingId).put("outboxPrompt",prompt));
                     }
                 }
                 JSONObject profile = new JSONObject().put("mode", mode).put("model", settings.optString("model", ""))
@@ -185,8 +184,7 @@ public final class AgbotActivity extends Activity {
                 client.request("POST", "/v1/sessions/" + sessionId + "/turns",
                     new JSONObject().put("prompt", prompt).put("profile", profile).put("requestId", pendingId));
                 synchronized (this) {
-                    JSONObject next = snapshot(); next.remove("outboxRequestId"); next.remove("outboxPrompt");
-                    secrets.write(next); config = next;
+                    config=secrets.update(new JSONObject().put("outboxRequestId",JSONObject.NULL).put("outboxPrompt",JSONObject.NULL));
                 }
                 main.post(() -> { if (!destroyed) { originalComposer.setText(""); healthy("任务已提交 · Linux 正在工作"); if (tab.equals("chat")) poll(); } });
             } catch (Exception e) { main.post(() -> { if (!destroyed) error(e.getMessage()); }); }
@@ -280,31 +278,53 @@ public final class AgbotActivity extends Activity {
             }
         });
     }
+    private void startComputer() {
+        new AlertDialog.Builder(this).setTitle("准备本地 Linux Computer")
+            .setMessage("首次会下载约 218 MiB 镜像，至少需要 3 GiB 可用空间，创建 24 GiB 稀疏工作磁盘并安装工具。Android 需要 Root。初始化期间保持网络畅通，建议连接电源。不会修改其他 DroidVM 安装或删除已有项目。")
+            .setPositiveButton("开始",(d,w)->{try{
+                if(android.os.Build.VERSION.SDK_INT>=33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)
+                    requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},7010);
+                ComputerService.command(this,"start");show("computer");
+            }catch(Exception e){error(e.getMessage());}}).setNegativeButton("取消",null).show();
+    }
+    private void refreshComputer() {
+        if(computerProgress==null)return;
+        android.content.SharedPreferences st=ComputerService.status(this);
+        computerProgress.setText(st.getString("stage","NOT_CONFIGURED")+"\n"+st.getString("message","尚未创建；点击下方按钮自动准备 Linux。"));
+    }
     private void showComputer() {
-        LinearLayout content = scrollingPage(); content.addView(text("本地 Linux Computer", 22, INK));
-        content.addView(text("Gunyah 节点：" + (new File("/dev/gunyah").exists() ? "可见" : "当前应用不可见 / 不存在")
-                + "\nAndroid " + android.os.Build.VERSION.RELEASE + " · " + android.os.Build.MODEL, 15, INK));
-        content.addView(text("设备节点存在不等于已经通过虚拟机启动测试。Agbot 内含修改后的 DroidVM，不调用手机里另一个 DroidVM 安装实例。", 14, MUTED));
-        content.addView(button("打开内置虚拟机管理 / 首次配置", () -> {
-            Intent intent = new Intent(); intent.setClassName(getPackageName(), "cn.classfun.droidvm.ui.SplashActivity");
-            try { startActivity(intent); } catch (Exception e) { error("内置 DroidVM 入口不可用：" + e.getMessage()); }
+        LinearLayout content=scrollingPage();content.addView(text("本地 Linux Computer",22,INK));
+        computerProgress=text("",15,INK);content.addView(computerProgress);refreshComputer();
+        content.addView(button("启动 / 重试 / 自动准备",this::startComputer));
+        content.addView(button("取消当前准备",()->ComputerService.command(this,"cancel")));
+        content.addView(button("正常关闭 Computer",()->new AlertDialog.Builder(this).setTitle("请求 Linux 关机？")
+            .setMessage("正在执行的任务会中断；项目文件保留。请先在聊天中停止任务。")
+            .setPositiveButton("关机",(d,w)->ComputerService.command(this,"stop")).setNegativeButton("取消",null).show()));
+        content.addView(button("检查真实 Guest 连接",()->async(()->request("GET","/v1/health",null),v->showText("Guest 连接结果",v.toString(2)))));
+        content.addView(button("配置模型 / Codex 登录",()->show("settings")));
+        content.addView(button("导出 Computer 诊断",()->{
+            Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("text/plain");
+            intent.putExtra(Intent.EXTRA_TITLE,"Agbot-computer-diagnostics.txt");startActivityForResult(intent,EXPORT_DIAGNOSTICS);
         }));
-        content.addView(button("检查 Guest 连接", () -> async(() -> request("GET", "/v1/health", null), value -> showText("真实连接结果", value.toString(2)))));
-        content.addView(button("导出 Guest 安装包", () -> {
-            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT); intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("application/gzip"); intent.putExtra(Intent.EXTRA_TITLE, "agbot-guest.tar.gz"); startActivityForResult(intent, EXPORT_GUEST);
+        content.addView(text("高级操作：仅当自动准备报错时使用。VM 运行会消耗电量；HyperOS 仍可能限制后台，请在系统电池设置中允许 Agbot 后台运行。",13,MUTED));
+        content.addView(button("打开内置虚拟机高级管理",()->{
+            if(ComputerService.status(this).getBoolean("busy",false)){error("准备中请勿同时修改 VM；可先取消准备");return;}
+            Intent intent=new Intent();intent.setClassName(getPackageName(),"cn.classfun.droidvm.ui.SplashActivity");
+            try{startActivity(intent);}catch(Exception e){error(e.getMessage());}
         }));
-        content.addView(text("开发版边界：Linux 镜像与 Guest 服务目前需要一次性初始化。全自动下载、预置镜像和自动配对尚未完成，不能把网关健康状态当作完整真机验收。", 14, MUTED));
-        content.addView(button("导入 Computer 配对文件", () -> {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT); intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("application/json"); startActivityForResult(intent, IMPORT_PAIRING);
-        }));
-        content.addView(button("设置连接地址与证书指纹", () -> show("settings")));
+        content.addView(button("强制停止（可能丢失未落盘写入）",()->new AlertDialog.Builder(this).setTitle("强制停止？")
+            .setMessage("仅用于正常关机无响应。等同于虚拟机断电，未保存写入可能丢失。不会删除磁盘。")
+            .setPositiveButton("确认强制停止",(d,w)->ComputerService.command(this,"force-stop")).setNegativeButton("取消",null).show()));
+        content.addView(button("系统电池设置",()->{try{startActivity(new Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));}catch(Exception e){error(e.getMessage());}}));
     }
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
         Uri target = data.getData();
+        if(requestCode==EXPORT_DIAGNOSTICS){
+            async(()->{String log=ComputerService.diagnostics(this);try(OutputStream out=getContentResolver().openOutputStream(target)){
+                if(out==null)throw new Exception("无法写入诊断文件");out.write(log.getBytes(StandardCharsets.UTF_8));}return new JSONObject();},v->healthy("诊断已导出；分享前请检查是否含私人项目内容"));return;
+        }
         if (requestCode == IMPORT_PAIRING) {
             async(() -> {
                 try (InputStream in = getContentResolver().openInputStream(target)) {
@@ -328,10 +348,10 @@ public final class AgbotActivity extends Activity {
                         if (!settingsReadable || submitting.get()) throw new Exception("当前不能替换连接设置");
                         if (!config.optString("outboxRequestId").isEmpty()) throw new Exception("先确认待发送消息的结果，再更换 Computer");
                         synchronized (this) {
-                            JSONObject next = snapshot();
+                            JSONObject next = new JSONObject();
                             next.put("gatewayBase", pairing.getString("gatewayBase")); next.put("bridgeToken", pairing.getString("bridgeToken"));
-                            next.put("certificateSha256", pairing.optString("certificateSha256")); next.remove("sessionId"); next.remove("sessionMode");
-                            secrets.write(next); config = next; sessionId = ""; cursor = 0;
+                            next.put("certificateSha256", pairing.optString("certificateSha256")); next.put("sessionId",JSONObject.NULL); next.put("sessionMode",JSONObject.NULL);
+                            config=secrets.update(next); sessionId = ""; cursor = 0;
                         }
                         healthy("Computer 已配对，下一步检查连接");
                     } catch (Exception e) { error(e.getMessage()); }
@@ -357,28 +377,37 @@ public final class AgbotActivity extends Activity {
         EditText api = field(content, "API Base URL（Codex 不使用此字段）", config.optString("apiBase"), false);
         EditText key = field(content, "API Key（Codex OAuth 不需要）", config.optString("apiKey"), true);
         EditText workspace = field(content, "工作区名称", config.optString("workspace", "default"), false);
+        boolean automatic=config.optJSONObject("computerIdentity")!=null;
+        if(automatic)content.addView(text("Computer 配对由自动初始化维护；下面只读显示。",13,MUTED));
         EditText gateway = field(content, "Computer 地址", config.optString("gatewayBase", "http://127.0.0.1:8765"), false);
         EditText token = field(content, "Computer 配对令牌", config.optString("bridgeToken"), true);
         EditText pin = field(content, "Guest 证书 SHA-256（自签 HTTPS 必填）", config.optString("certificateSha256"), false);
+        if(automatic){gateway.setEnabled(false);token.setEnabled(false);pin.setEnabled(false);}
         content.addView(button("保存加密设置", () -> {
             try {
                 if (submitting.get()) throw new Exception("正在提交消息，暂不切换连接配置");
                 if (!config.optString("outboxRequestId").isEmpty()) throw new Exception("上一条消息结果未确认，先回到聊天重试，再修改配置");
                 JSONObject previous = snapshot();
-                JSONObject next = snapshot(); next.put("mode", MODES[protocols.getSelectedItemPosition()]); next.put("model", model.getText().toString().trim());
+                JSONObject next = new JSONObject(); next.put("mode", MODES[protocols.getSelectedItemPosition()]); next.put("model", model.getText().toString().trim());
                 next.put("apiBase", api.getText().toString().trim()); next.put("apiKey", key.getText().toString().trim());
-                next.put("workspace", workspace.getText().toString().trim()); next.put("gatewayBase", gateway.getText().toString().trim());
-                next.put("bridgeToken", token.getText().toString().trim()); next.put("certificateSha256", pin.getText().toString().trim());
+                next.put("workspace", workspace.getText().toString().trim());
+                boolean currentAutomatic=previous.optJSONObject("computerIdentity")!=null;
+                if(!automatic && !currentAutomatic){next.put("gatewayBase",gateway.getText().toString().trim());next.put("bridgeToken",token.getText().toString().trim());next.put("certificateSha256",pin.getText().toString().trim());}
                 if (!settingsReadable) throw new Exception("旧设置解密失败，禁止覆盖");
-                boolean destinationChanged = !previous.optString("gatewayBase").equals(next.optString("gatewayBase"))
+                boolean destinationChanged = !automatic && !currentAutomatic && (!previous.optString("gatewayBase").equals(next.optString("gatewayBase"))
                     || !previous.optString("bridgeToken").equals(next.optString("bridgeToken"))
-                    || !previous.optString("certificateSha256").equals(next.optString("certificateSha256"));
-                if (destinationChanged) { next.put("sessionId", ""); next.remove("sessionMode"); }
-                secrets.write(next); synchronized (this) { config = next; }
+                    || !previous.optString("certificateSha256").equals(next.optString("certificateSha256")));
+                if (destinationChanged) { next.put("sessionId", ""); next.put("sessionMode",JSONObject.NULL); }
+                synchronized (this) { config = secrets.update(next); }
                 if (destinationChanged) { sessionId = ""; cursor = 0; }
                 healthy("设置已加密保存");
             } catch (Exception e) { error(e.getMessage()); }
         }));
+        content.addView(button("测试已保存 API（少量计费，不执行工具）",()->new AlertDialog.Builder(this).setTitle("测试云模型连接？")
+            .setMessage("使用已保存的地址、模型与密钥发送一次短请求，最多 256 个输出 token。只有标准测试文本，不读取项目。")
+            .setPositiveButton("测试",(d,w)->async(()->{JSONObject c=snapshot();return request("POST","/v1/providers/probe",new JSONObject().put("profile",new JSONObject()
+                .put("mode",c.optString("mode","codex")).put("model",c.optString("model")).put("baseUrl",c.optString("apiBase")).put("apiKey",c.optString("apiKey"))));},v->showText("真实 API 测试",v.toString(2))))
+            .setNegativeButton("取消",null).show()));
         content.addView(button("使用 ChatGPT 账户登录 Codex", () -> async(() -> request("POST", "/v1/codex/login", new JSONObject()), value -> {
             String url = value.getString("verificationUrl"), code = value.getString("userCode"); Uri uri = Uri.parse(url);
             if (!"https".equals(uri.getScheme()) || !Arrays.asList("auth.openai.com", "chatgpt.com").contains(uri.getHost()))

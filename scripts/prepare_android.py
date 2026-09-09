@@ -17,6 +17,7 @@ ANDROID = '{http://schemas.android.com/apk/res/android}'
 TOOLS = '{http://schemas.android.com/tools}'
 STATE = '.agbot-overlay-state.json'
 APP_ID = 'app.agbot.android'
+GVISOR_SOURCE = 'app/src/main/java/cn/classfun/droidvm/daemon/network/backend/gvisor/GvisorBridgeBackend.java'
 LEGACY_GUEST = 'app/src/main/assets/agbot/agbot-guest.tar.gz'
 ET.register_namespace('android', ANDROID[1:-1])
 ET.register_namespace('tools', TOOLS[1:-1])
@@ -36,8 +37,12 @@ def transform_gradle(text: str) -> str:
     if 'namespace = "cn.classfun.droidvm"' not in text:
         raise RuntimeError('DroidVM namespace changed; review JNI and manifest class resolution first')
     text = replace_once(text, 'applicationId = "cn.classfun.droidvm"', f'applicationId = "{APP_ID}"')
-    text = replace_once(text, 'versionCode = generatedVersionCode', 'versionCode = 1')
-    return replace_once(text, 'versionName = generatedVersionName', 'versionName = "0.1.0-dev.1"')
+    text = replace_once(text, 'versionCode = generatedVersionCode', 'versionCode = 2')
+    return replace_once(text, 'versionName = generatedVersionName', 'versionName = "0.2.0-dev.1"')
+
+def transform_gvisor(data: str) -> bytes:
+    return replace_once(data, 'var bindHost = v6 ? "[::]" : "0.0.0.0";',
+        'var bindHost = inst.item.optBoolean("agbot_loopback_forwards", false) ? (v6 ? "[::1]" : "127.0.0.1") : (v6 ? "[::]" : "0.0.0.0");').encode()
 
 def transform_manifest(data: str) -> bytes:
     parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
@@ -45,6 +50,11 @@ def transform_manifest(data: str) -> bytes:
     app = doc.find('application')
     if app is None:
         raise RuntimeError('Upstream application manifest is missing')
+    permissions={x.get(ANDROID+'name') for x in doc.findall('uses-permission')}
+    for name in ('android.permission.FOREGROUND_SERVICE', 'android.permission.FOREGROUND_SERVICE_SPECIAL_USE', 'android.permission.WAKE_LOCK', 'android.permission.POST_NOTIFICATIONS'):
+        if name not in permissions: ET.SubElement(doc,'uses-permission',{ANDROID+'name':name})
+    service=ET.SubElement(app,'service',{ANDROID+'name':APP_ID+'.ComputerService',ANDROID+'exported':'false',ANDROID+'foregroundServiceType':'specialUse'})
+    ET.SubElement(service,'property',{ANDROID+'name':'android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE',ANDROID+'value':'User-started local Linux VM workstation provisioning and connection'})
     app.set(ANDROID + 'label', 'Agbot')
     app.set(ANDROID + 'appCategory', 'productivity')
     app.set(ANDROID + 'allowBackup', 'false')
@@ -81,6 +91,9 @@ def transform_manifest(data: str) -> bytes:
 
 def plan(checkout: Path, root: Path = ROOT) -> dict[str, bytes]:
     outputs = {
+        GVISOR_SOURCE: transform_gvisor(git(checkout, 'show', 'HEAD:' + GVISOR_SOURCE)),
+        'app/src/main/assets/agbot/images.lock.json': (root/'guest/images.lock.json').read_bytes(),
+        'app/src/main/assets/agbot/seed_bootstrap.py': (root/'guest/seed_bootstrap.py').read_bytes(),
         'app/build.gradle.kts': transform_gradle(git(checkout, 'show', 'HEAD:app/build.gradle.kts')).encode(),
         'app/src/main/AndroidManifest.xml': transform_manifest(git(checkout, 'show', 'HEAD:app/src/main/AndroidManifest.xml')),
         # AAPT transparently expands .gz assets and strips their extension.

@@ -11,7 +11,7 @@ import unittest
 import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from prepare_android import apply, transform_gradle, transform_manifest, STATE, ANDROID
+from prepare_android import apply, transform_gradle, transform_manifest, STATE, ANDROID, GVISOR_SOURCE, transform_gvisor
 from package_guest import archive_bytes
 
 GRADLE = '''android {
@@ -41,7 +41,7 @@ class TransformationTests(unittest.TestCase):
         out = transform_gradle(GRADLE)
         self.assertIn('namespace = "cn.classfun.droidvm"', out)
         self.assertIn('applicationId = "app.agbot.android"', out)
-        self.assertIn('versionCode = 1', out)
+        self.assertIn('versionCode = 2', out)
     def test_rejects_changed_gradle_layout(self):
         with self.assertRaises(RuntimeError): transform_gradle(GRADLE.replace('generatedVersionCode', 'different'))
         with self.assertRaises(RuntimeError): transform_gradle(GRADLE + '\napplicationId = "cn.classfun.droidvm"')
@@ -55,13 +55,23 @@ class TransformationTests(unittest.TestCase):
         self.assertEqual(len(launchers), 1)
         self.assertEqual(launchers[0].get(ANDROID + 'name'), 'app.agbot.android.AgbotActivity')
         self.assertEqual(app.findall('activity')[0].get(ANDROID + 'exported'), 'false')
+    def test_computer_service_is_private_and_root_loopback_patch_is_scoped(self):
+        doc=ET.fromstring(transform_manifest(MANIFEST))
+        service=doc.find('application/service')
+        self.assertEqual(service.get(ANDROID+'name'),'app.agbot.android.ComputerService')
+        self.assertEqual(service.get(ANDROID+'exported'),'false')
+        text=transform_gvisor('var bindHost = v6 ? "[::]" : "0.0.0.0";').decode()
+        self.assertIn('agbot_loopback_forwards',text)
+        self.assertIn('127.0.0.1',text)
+        self.assertIn('"0.0.0.0"',text)  # Unmanaged upstream networks retain their old behavior.
+        with self.assertRaises(RuntimeError):transform_gvisor('unknown source layout')
     def test_unknown_manifest_entry_is_rejected(self):
         with self.assertRaises(RuntimeError): transform_manifest(MANIFEST.replace('.ui.SplashActivity', '.Changed'))
 
 class PreparationTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(); self.checkout = Path(self.tmp.name) / 'droidvm'; self.checkout.mkdir()
-        for name, data in [('app/build.gradle.kts', GRADLE), ('app/src/main/AndroidManifest.xml', MANIFEST)]:
+        for name, data in [('app/build.gradle.kts', GRADLE), ('app/src/main/AndroidManifest.xml', MANIFEST), (GVISOR_SOURCE, 'var bindHost = v6 ? "[::]" : "0.0.0.0";')]:
             p = self.checkout / name; p.parent.mkdir(parents=True, exist_ok=True); p.write_text(data)
         git(self.checkout, 'init', '-b', 'main'); git(self.checkout, 'config', 'user.name', 'Fixture')
         git(self.checkout, 'config', 'user.email', 'fixture@localhost'); git(self.checkout, 'add', '.')
@@ -101,9 +111,9 @@ class PreparationTests(unittest.TestCase):
         with self.assertRaises(RuntimeError): apply(self.checkout, self.commit, ROOT)
         self.assertEqual(p.read_text(), 'user data'); self.assertFalse((self.checkout / STATE).exists())
     def test_source_checkout_symlink_refused(self):
-        (self.checkout / 'app/src/main/java').symlink_to(self.checkout.parent, target_is_directory=True)
+        (self.checkout / 'app/src/main/java/app').symlink_to(self.checkout.parent, target_is_directory=True)
         with self.assertRaises(RuntimeError): apply(self.checkout, self.commit, ROOT)
-        self.assertFalse((self.checkout.parent / 'app/agbot/android/AgbotActivity.java').exists())
+        self.assertFalse((self.checkout.parent / 'agbot/android/AgbotActivity.java').exists())
 
 class PackagingTests(unittest.TestCase):
     def test_archive_is_deterministic_source_only(self):
