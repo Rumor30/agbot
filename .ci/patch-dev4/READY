@@ -1,1 +1,2 @@
 Agbot dev.4: repair stale root daemon/runtime extraction and run directory on APK updates.
+retry=1
