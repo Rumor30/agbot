@@ -39,7 +39,7 @@ jobs:
           name: probe-public-${{ github.run_id }}
           path: probe-public/public.json
           retention-days: 1
-      - name: Wait for matching ciphertext and execute bounded probe
+      - name: Wait for matching ciphertext and execute two bounded diagnostics
         env:
           GH_READ_TOKEN: ${{ github.token }}
         run: |
@@ -65,7 +65,7 @@ jobs:
                           decoded=json.loads(plaintext)
                           if decoded.get('baseUrl')!='https://worldclawpro.ai/v1':raise RuntimeError('Unexpected test target')
                           env=dict(os.environ);env.pop('GH_READ_TOKEN',None)
-                          subprocess.run(['node','scripts/live_provider_probe.mjs','live-evidence/result.json'],input=plaintext,env=env,check=True,timeout=600)
+                          subprocess.run(['node','scripts/live_wire_probe.mjs','live-evidence/result.json'],input=plaintext,env=env,check=True,timeout=240)
                           break
                   except urllib.error.HTTPError as e:
                       if e.code!=404:raise
