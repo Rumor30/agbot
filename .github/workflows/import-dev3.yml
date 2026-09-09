@@ -1,0 +1,60 @@
+name: Import Warsaw dev.3 patch
+
+on:
+  push:
+    branches: [computer-v1-20260909]
+    paths:
+      - '.ci/patch-dev3/READY'
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  import:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reconstruct and verify patch
+        run: |
+          cat .ci/patch-dev3/chunk-* | tr -d '\n' | base64 -d > /tmp/agbot-dev3.zip
+          echo '8ba70edf46673a1f22f0a2c202fd211650f1807d2a306c5096625d5fac15da65  /tmp/agbot-dev3.zip' | sha256sum -c -
+          rm -rf /tmp/agbot-dev3
+          mkdir /tmp/agbot-dev3
+          unzip -q /tmp/agbot-dev3.zip -d /tmp/agbot-dev3
+          test -s /tmp/agbot-dev3/LocalComputer.java
+          test -s /tmp/agbot-dev3/ComputerService.java
+          test -s /tmp/agbot-dev3/prepare_android.py
+          test -s /tmp/agbot-dev3/test_preparation.py
+      - name: Apply exact reviewed files
+        run: |
+          cp /tmp/agbot-dev3/LocalComputer.java android-overlay/app/src/main/java/app/agbot/android/LocalComputer.java
+          cp /tmp/agbot-dev3/ComputerService.java android-overlay/app/src/main/java/app/agbot/android/ComputerService.java
+          cp /tmp/agbot-dev3/prepare_android.py scripts/prepare_android.py
+          cp /tmp/agbot-dev3/test_preparation.py tests/test_preparation.py
+          python -m py_compile scripts/prepare_android.py tests/test_preparation.py
+          javac scripts/JavaSyntaxCheck.java
+          java -cp scripts JavaSyntaxCheck android-overlay/app/src/main/java/app/agbot/android/LocalComputer.java android-overlay/app/src/main/java/app/agbot/android/ComputerService.java
+          git diff --check
+          grep -F 'KernelModuleManager.loadAndVerify' android-overlay/app/src/main/java/app/agbot/android/LocalComputer.java
+          grep -F 'Constants.PATH_BUILTIN_KERNEL' android-overlay/app/src/main/java/app/agbot/android/LocalComputer.java
+          grep -F 'versionName = "0.2.0-dev.3"' scripts/prepare_android.py
+      - name: Commit coherent device fix
+        run: |
+          git config user.name 'Agbot CI Importer'
+          git config user.email 'actions@users.noreply.github.com'
+          git add android-overlay/app/src/main/java/app/agbot/android/LocalComputer.java \
+                  android-overlay/app/src/main/java/app/agbot/android/ComputerService.java \
+                  scripts/prepare_android.py tests/test_preparation.py
+          git diff --cached --quiet && { echo 'patch produced no source changes'; exit 1; }
+          git commit -m 'fix(android): recover Warsaw Gunyah VmCrash boot'
+          git push origin HEAD:${GITHUB_REF_NAME}
+      - name: Dispatch real checks from imported commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run test.yml --ref "$GITHUB_REF_NAME"
+          gh workflow run android.yml --ref "$GITHUB_REF_NAME"
