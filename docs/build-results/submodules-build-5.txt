@@ -1,0 +1,6 @@
+ 5cc4aa892c8cd25b77b386e787442ce6975cfa31 app/src/main/assets/prebuilts (5cc4aa8)
+ 3455302847cf1e4671f1d8f5fa953fd46a7b1404 app/src/main/cpp/jsoncpp (1.9.0-275-g3455302)
+ 1ee1a4afcb5322db0e64f6ec6b00dac5a06af94b app/src/main/cpp/libvncserver (remotes/origin/droidvm-app)
+ 568f56cde6ac78b6dfcc14acd380b2e745c301ea app/src/main/cpp/libvncserver/doc/doxygen-awesome-css (v2.3.4)
+ 7fcf9dcfe0cc5b14e3841a4429dc091a6ffca861 app/src/main/cpp/libvncserver/webclients/novnc (v1.5.0)
+ 6cec94b5634e1c9025af17527688f502f523fd25 app/src/main/cpp/udisasm (heads/master)

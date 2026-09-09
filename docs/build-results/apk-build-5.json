@@ -1,0 +1,84 @@
+{
+  "apk": "Agbot-debug.apk",
+  "bytes": 126111120,
+  "sha256": "cf4f61c63a92161f23734355133329c275aeda508ae0f79226acb62838e29da5",
+  "dexFiles": [
+    "classes.dex",
+    "classes10.dex",
+    "classes11.dex",
+    "classes12.dex",
+    "classes13.dex",
+    "classes14.dex",
+    "classes15.dex",
+    "classes16.dex",
+    "classes17.dex",
+    "classes18.dex",
+    "classes19.dex",
+    "classes2.dex",
+    "classes20.dex",
+    "classes3.dex",
+    "classes4.dex",
+    "classes5.dex",
+    "classes6.dex",
+    "classes7.dex",
+    "classes8.dex",
+    "classes9.dex"
+  ],
+  "requiredAarch64Binaries": {
+    "assets/bin/arm64-v8a/daemon": {
+      "bytes": 9544,
+      "machine": 183,
+      "sha256": "02bb7d9b588434de3c9ab673a894272daac9c2bab66b7fc8d710ee8ef0acd72c"
+    },
+    "assets/bin/arm64-v8a/droidvm": {
+      "bytes": 10489824,
+      "machine": 183,
+      "sha256": "6fec837a4c3478045a493fd9f2c6e4b3b0c041accadb49fd9e88c7073faf0815"
+    },
+    "lib/arm64-v8a/libunixhelper.so": {
+      "bytes": 15040,
+      "machine": 183,
+      "sha256": "55adcc01501cc19d7ccf51674bcc17db550fb0b3bfa849fb7db74b9572fea866"
+    },
+    "lib/arm64-v8a/libvnc_jni.so": {
+      "bytes": 13248,
+      "machine": 183,
+      "sha256": "bae7a3136a10d288bb34f23073f1386e5b9b0ff05919e91096128441684d337d"
+    },
+    "lib/arm64-v8a/liblbx.so": {
+      "bytes": 2959344,
+      "machine": 183,
+      "sha256": "6389acea341b061c6e47b9770d7324b91eb8ec8a5133803e71a1eb4cfe6c9435"
+    },
+    "lib/arm64-v8a/libcompat_a16.so": {
+      "bytes": 3816,
+      "machine": 183,
+      "sha256": "8e6b575e61a50b649c45966f9f18d7f56b4806c2f93e08bfc70bb2b14083fc11"
+    }
+  },
+  "pinnedRuntimeAssets": {
+    "assets/prebuilts/prebuilt-arm64-v8a.json": {
+      "bytes": 15739,
+      "sha256": "b5b4c00ae0e6cc29ac3e19a046fbff7fcf6aba63244e1ff3e525fb8429e768c0"
+    },
+    "assets/prebuilts/prebuilt-arm64-v8a.tar.xz": {
+      "bytes": 69684964,
+      "sha256": "994f9de78fccd5f36c0877852825399e40cf26a6d350c109b350176077adb593"
+    }
+  },
+  "guestSourceSha256": "aa08aa1c4317d9a8cf856d5abd0e5faf0e039648973ff9534b8c1f4a49bfed78",
+  "checked": [
+    "zip-crc",
+    "compiled-dex",
+    "AgbotActivity",
+    "aarch64-elf",
+    "pinned-prebuilts",
+    "exact-guest-source"
+  ],
+  "notChecked": [
+    "installation",
+    "Gunyah-boot",
+    "real-model-login",
+    "one-click-provisioning"
+  ]
+}

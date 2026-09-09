@@ -1,63 +1,54 @@
-# 当前交付状态：0.1.0-dev.1
+# 当前交付状态：0.1.0-dev.1 / 首个 APK 里程碑
 
-日期：2026-09-09。此文档描述首轮实际产出，不是未来功能承诺。
+更新日期：2026-09-09。此文件取代首轮源码交付时“未上传 GitHub、未运行 CI、没有 APK”的旧状态。
 
 ## 一句话判断
 
-**Linux 网关已有可执行、经过本地自动测试的实现；Android 是尚未编译的源码整合版本；“一个 APK 自动准备 Linux 并开始任务”的产品闭环尚未完成。**
-没有已产出 APK，没有完成真机验收，没有登录真实模型账户，没有创建或推送 GitHub 仓库。
+**源码已推送 `Rumor30/agbot`；真实 Android 编译、签名与 APK 载荷校验已通过，Debug APK 已产出。自动创建 Linux、Guest 自动配对和目标手机 Gunyah / 真实模型的端到端链路尚未完成。**
 
-## 实际完成
+准确构建提交、产物、校验值、模拟器结果见 [APK_BUILD.md](APK_BUILD.md)。源码合并成功或普通 Android 模拟器通过，不等于目标手机上的 VM 已启动。
 
-- 读取 DroidVM 最新上游元数据与关键构建、入口、daemon 类，锁定 `72391c44f3a08994f513cd61205496e6f7dfd5ae`。
-- 原创 Android UI、加密设置、HTTPS / 精确证书配对、会话/事件/审批/文件界面。
-- 三种 HTTP 模型 wire format 的编码和解析，以及显式工具结果回传。
-- 官方 Codex app-server stdio 桥、设备码登录、账户与模型列表、thread/turn、审批和中断。
-- Guest 文件/Shell 工具、一次性审批、工作区并发锁、幂等提交、持久状态、重启中断处理。
-- Node/Codex 固定版本、TLS 和 systemd Guest 安装脚本；自动打包源码资产。
-- 上游整合脚本与安全建仓发布脚本，GitHub Actions 测试和手动 Android 构建配置。
-- 本地测试及交付源码，详细记录见 TEST_REPORT.md。
+## 已完成并有证据
 
-## 验证矩阵
+- 锁定并实际获取 DroidVM `72391c44f3a08994f513cd61205496e6f7dfd5ae` 及其递归子模块，没有浮动更新底层。
+- 修复 CI 的 SDK 包名；实际安装 `platforms;android-37.0`，保持上游 compile/target SDK 37，未为通过构建降低版本。
+- 用完整上游工程实际执行 `:app:assembleDebug`，经过 Java/Kotlin、资源、DEX、ARM64/x86_64 native 和 APK 签名，不是语法解析或空壳占位 APK。
+- 校验应用 ID `app.agbot.android`、启动入口 `app.agbot.android.AgbotActivity`、Debug v2 签名、ZIP 对齐与 CRC、编译后的入口类、ARM64 ELF 及固定版本预构建运行时。
+- 拆包发现并修复 Guest `.gz` 资产被 AAPT 自动解压/改名的问题；APK 内改用 `.tgz`，逐字节对照当前源码生成的 Guest 包。
+- 对同一份交付 APK 在 Android 16 / API 36 模拟器实际安装、冷启动并切换聊天、Computer、设置页面，保留截图、UI XML 和日志；不替代 Gunyah 真机验证。
+- 原有网关与协议测试继续运行于 GitHub Actions 的 Node 22.16.0 / 24.20.0；取消测试改为等待真实协议事件，避免用固定 80 ms 假设进程启动时间。
+- 新增 APK 结构校验、合法小型 ELF 与 Guest 旧资产安全迁移的回归测试。
 
-| 项目 | 验证状态 | 不能据此推导什么 |
+## 功能边界
+
+| 模块 | 当前可确认的状态 | 尚不能宣称 |
 | --- | --- | --- |
-| JavaScript 语法 | 通过 | 不代表对接全部供应商 |
-| 网关 53 项自动测试 | 通过 | 云端响应及 Codex 协议使用模拟；不代表 OAuth 成功 |
-| 非 root 实际网关进程 | 临时目录运行、401/200 健康接口、SIGTERM 退出通过 | 没有启动 DroidVM、Codex 或 ARM64 原生二进制 |
-| Python 12 项测试 | 通过 | 上游是合成最小 Git fixture，不是完整 DroidVM 工程 |
-| 3 个 Android Java 文件 | JDK 21 / Java 11 语法 parse 通过 | 没有 Android API 类型检查、资源链接或 APK 编译 |
-| XML 资源 | 解析通过 | 不是 Android lint / aapt2 验证 |
-| Bash 脚本 | 语法与无确认时的拒绝路径通过 | apt、Node 下载、Codex 安装、systemd 启动未执行 |
-| 上游整合 | 锁定与修改逻辑已写、fixture 测试通过 | 完整上游 checkout/子模块获取、实际 overlay 应用未完成 |
-| GitHub Actions | 配置文件已写 | 未触发、未成功运行，也没有在线 CI 徽标依据 |
-| 目标手机 | 仅有用户先前提供的设备日志 | `/dev/gunyah` 存在不等于 VM 启动成功 |
+| Android App | 原生聊天、会话、审批、文件、设置和 Computer 页面已编译入独立 APK | warsaw 真机适配全部通过 |
+| 模型协议 | Responses / Chat Completions / Anthropic 请求、流、工具回传和错误处理已实现并模拟测试 | 三种真实服务商均联调成功 |
+| Codex | 官方 app-server 设备码登录、账户、模型、任务、审批、中断桥接代码与模拟测试 | 已用真实账户登录或在 ARM64 Guest 跑通 |
+| Linux 网关 | 文件、Shell、一次性审批、工作区锁、幂等提交、持久状态与重启中断测试通过 | 完整沙盒安全隔离、永久后台驻留 |
+| Guest 安装 | 安装脚本和配对生成逻辑已写，源码安装包正确内置 APK | 已在 DroidVM ARM64 Guest 安装验证 |
+| DroidVM | 完整源码构建、固定运行时打包、高级管理入口保留 | 自动创建/启动/配置 Computer 已完成 |
+| 本地 VM | 目标日志确认 `/dev/gunyah` 存在 | 节点存在等于 Gunyah 启动成功 |
 
-## 外部阻碍记录
+## Root 要求没有改变
 
-GitHub 连接确认账户 `Rumor30`。查找 Agbot 没有结果，读取 `Rumor30/Agbot` 返回 404（不存在或当前连接不可见）。
-当前可调用的 GitHub 动作没有新建/fork 仓库能力；插件目录查询未找到已连接的其他创建途径。本次没有远程写入、没有使用用户其他仓库。
-因此提供 `scripts/publish_github.py`，由用户已认证的本地 gh 执行创建私有仓库和推送；该发布动作本次没有执行。
+Android 宿主机运行本地 VM **要求 root**。Agbot 不继承另一个 DroidVM 安装的授权和私有数据。
+Linux Guest 的首次安装需要 Guest root；长期网关降权到独立 `agbot` 用户。Android root 与 Guest 用户权限是两层，不能混为一谈。
+普通 Android 模拟器的 APK 安装/界面测试不是非 root 虚拟化模式；不新增 Android 非 root 的完整产品承诺。
 
-开发容器没有 Android SDK/NDK/Gradle、gh 和可用于远程建仓的 GitHub CLI 凭据。
-从容器发起的 GitHub clone 遇到域名解析失败；上游内容通过已连接的只读请求核验。
-**没有把 SDK 缺失伪装成构建通过，也没有用空 APK 交付。**
+## 下一阶段优先级
 
-## 尚待完成：按产品影响排序
+1. 保持已打通的 APK 构建，继续对产物而非仅对源码做验收。
+2. 读取并改造实际 VM 创建/镜像导入/daemon 生命周期，实现固定镜像校验、磁盘、Guest 服务注入、网络发现、私密配对与真正的 Computer 状态。
+3. 在目标 warsaw Android 16 设备验证独立 APK、root 授权、运行时解包、Gunyah 启动和 Guest 连接。失败保留日志，不改软件模拟假装成功。
+4. 用真实 Codex 账户与三种真实 API endpoint 各验证一次任务、审批、拒绝和中断。凭据由用户本地填写，不发到聊天或 GitHub。
+5. 分离模型凭据与任意工具进程 UID，再做后台、休眠、断网、进程死亡和恢复测试。
+6. 完成浏览器、Playwright、桌面接管与持久开发服务器预览。
 
-1. **真实 Android 构建**：取得完整锁定上游及子模块，执行 Gradle，修复实际 API/资源/JNI/打包问题，并记录 APK SHA-256。
-2. **自动准备 Computer**：读取并改造上游 Linux 镜像创建与 daemon 生命周期，完成镜像校验、磁盘、Guest 服务注入、网络、认证和配对；正常使用不暴露 Linux 安装终端。
-3. **真机最小验收**：Agbot 独立包安装 → root/runtime → Gunyah Guest 启动 → HTTPS 网关 → 模型任务。失败保留真实日志，不切软件模拟假装硬件虚拟化成功。
-4. **真实模型互操作**：Codex 官方 ARM64 CLI/设备码/权限/sandbox；另外三种协议各一个真实 endpoint；记录已使用的模型 ID、错误和限制，避免消耗不必要额度。
-5. **强隔离和生命周期**：将模型凭据持有者与任意命令执行 UID 分离；宿主后台/休眠/进程死亡测试；启动停止与任务状态一致性。
-6. **完整 Computer 交互**：浏览器、Playwright、桌面接管、持久开发服务器与预览、diff UI 优化。上游有入口不代表这些已经与 Agent 整合。
+## 仍需保留的限制
 
-## 当前实现限制
-
-一次任务默认 24 轮工具循环、20 分钟总上限；Shell 默认 90 秒及 128 KiB 输出；单文件工具 256 KiB；上下文约 768 KiB；事件最多保留 2000 条。
-这些是当前实现值，不是模型服务商额度限制；暂未提供全部 UI 调节项。
-
-断网不会自动把任务安全地“迁移到别处”。客户端断开与任务停止是不同状态，重连应检查服务端。
-当前流式事件采用较频繁的同步落盘，长输出场景有待降低闪存写入和测量延迟。
-没有管理脱离会话的任意后台守护进程；批准使用 Shell 启动后台服务器后，不能假设点“停止”就能收回所有脱离进程。
-同 UID 的任意 Shell 可能读取 Guest 凭据；文本脱敏只能尽力减少意外暴露，不是防泄露的安全边界。
+默认任务上限 24 轮/20 分钟；Shell 默认 90 秒/128 KiB 输出；单文件工具 256 KiB；上下文约 768 KiB；事件保留最多 2000 条。不是模型服务商额度。
+同 UID 的已批准 Shell 可能读取 Guest 凭据；工作目录不是权限沙盒。文本脱敏不等于强隔离。
+断开手机界面不等于停止 Guest 任务；服务重启不会自动重放命令，仍需检查结果未知的文件修改。
+尚未提供正式发布签名和稳定升级策略；Debug APK 不是安全审计后的正式版。

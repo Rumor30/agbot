@@ -1,0 +1,7 @@
+Starting: Intent { cmp=app.agbot.android/.AgbotActivity }
+Status: ok
+LaunchState: COLD
+Activity: app.agbot.android/.AgbotActivity
+TotalTime: 8032
+WaitTime: 8157
+Complete

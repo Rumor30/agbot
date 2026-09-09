@@ -1,6 +1,6 @@
 # 一手来源与版本核验
 
-核验日期：2026-09-09。日期是查询日期，不表示本次已编译或运行这些组件。
+核验日期：2026-09-09。日期是查询日期。Android 源码已完成真实构建；运行验证的范围见 APK_BUILD.md，不能据此声称云模型与 Gunyah 已运行成功。
 
 ## DroidVM
 
@@ -46,4 +46,4 @@
 - Android AGP 9.2：https://developer.android.com/build/releases/agp-9-2-0-release-notes
 - GitHub CLI 建仓命令：https://cli.github.com/manual/gh_repo_create
 
-Node 24.20.0 是可复现的候选 Guest 固定版本，不表示查询日最新版本。对应 SHA-256 写入 `guest/runtime.lock.json`；实际执行验证仍只有测试机 Node 22.16.0。
+Node 24.20.0 是可复现的候选 Guest 固定版本，不表示查询日最新版本。对应 SHA-256 写入 `guest/runtime.lock.json`；网关测试已经在 GitHub Actions 的 Node 22.16.0 与 24.20.0 两个环境运行；这不等于在 ARM64 Guest 内成功安装 Node/Codex。

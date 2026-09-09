@@ -1,0 +1,18 @@
+{
+  "apkSha256": "cf4f61c63a92161f23734355133329c275aeda508ae0f79226acb62838e29da5",
+  "passed": [
+    "install",
+    "launcher",
+    "chat",
+    "computer-tab",
+    "settings-tab",
+    "return-to-chat"
+  ],
+  "notTested": [
+    "Android-root-authorization",
+    "Gunyah",
+    "Linux-VM",
+    "Guest-installation",
+    "cloud-models"
+  ]
+}
