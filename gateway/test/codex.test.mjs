@@ -58,10 +58,20 @@ test('Codex mock: unsupported permission expansion is denied without prompting a
 });
 test('Codex mock: cancellation interrupts the active turn', async t => {
   const { bridge, root, read } = fixture(t); const controller = new AbortController();
+  // Wait for protocol readiness, not a wall-clock guess about child startup.
+  // Loaded CI workers can take longer than 80 ms to start the fixture process.
+  const started = once(bridge, 'notification', { signal: AbortSignal.timeout(5000) });
   const request = run(bridge, root, 'WAIT', { signal: controller.signal });
   const assertion = assert.rejects(request.promise, e => e.name === 'AbortError');
-  await delay(80); controller.abort(); await assertion; await delay(60);
-  assert.ok(read().some(x => x.method === 'turn/interrupt'));
+  const [notification] = await started;
+  assert.equal(notification.method, 'turn/started');
+  controller.abort(); await assertion;
+  const deadline = performance.now() + 5000;
+  while (!read().some(x => x.method === 'turn/interrupt') && performance.now() < deadline) await delay(10);
+  const interrupt = read().find(x => x.method === 'turn/interrupt');
+  assert.ok(interrupt, 'The running turn must receive an interrupt, not merely reject locally');
+  assert.equal(interrupt.params.turnId, notification.params.turn.id);
+  assert.equal(interrupt.params.threadId, notification.params.threadId);
 });
 test('Codex mock: process disconnect fails the task instead of reporting success', async t => {
   const { bridge, root } = fixture(t);
