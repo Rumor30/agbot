@@ -8,12 +8,16 @@ on:
       - 'guest/**'
       - 'gateway/src/**'
       - 'scripts/guest_smoke.py'
+      - 'scripts/run_guest_integration.py'
       - 'scripts/seed_config.py'
       - 'scripts/SeedHarness.java'
       - 'scripts/package_guest.py'
       - 'android-overlay/**/SeedDisk.java'
 permissions:
   contents: read
+concurrency:
+  group: guest-integration-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   guest:
     name: Real Linux Guest (${{ matrix.arch }}, not Gunyah)
@@ -38,7 +42,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends qemu-system-x86 qemu-system-arm qemu-utils ovmf qemu-efi-aarch64 dosfstools openssl
           if test -e /dev/kvm; then sudo chmod 0666 /dev/kvm; fi
       - name: Boot cloud image, enroll, execute and reboot
-        run: python -u scripts/guest_smoke.py --arch '${{ matrix.arch }}' --output guest-evidence
+        run: python -u scripts/run_guest_integration.py --arch '${{ matrix.arch }}' --output guest-evidence
       - name: Upload sanitized evidence (no seed, token or private key)
         if: always()
         uses: actions/upload-artifact@v7
