@@ -41,11 +41,11 @@ class TransformationTests(unittest.TestCase):
         out = transform_gradle(GRADLE)
         self.assertIn('namespace = "cn.classfun.droidvm"', out)
         self.assertIn('applicationId = "app.agbot.android"', out)
-        self.assertIn('versionCode = 3', out)
-        self.assertIn('versionName = "0.2.0-dev.2"', out)
+        self.assertIn('versionCode = 4', out)
+        self.assertIn('versionName = "0.2.0-dev.3"', out)
     def test_rejects_changed_gradle_layout(self):
         with self.assertRaises(RuntimeError): transform_gradle(GRADLE.replace('generatedVersionCode', 'different'))
-        with self.assertRaises(RuntimeError): transform_gradle(GRADLE + '\napplicationId = "cn.classfun.droidvm"')
+        with self.assertRaises(RuntimeError): transform_gradle(GRADLE + '\\napplicationId = "cn.classfun.droidvm"')
     def test_manifest_uses_one_launcher_and_disables_backup(self):
         app = ET.fromstring(transform_manifest(MANIFEST)).find('application')
         self.assertEqual(app.get(ANDROID + 'name'), '.DroidVMApp')
@@ -64,10 +64,17 @@ class TransformationTests(unittest.TestCase):
         text=transform_gvisor('var bindHost = v6 ? "[::]" : "0.0.0.0";').decode()
         self.assertIn('agbot_loopback_forwards',text)
         self.assertIn('127.0.0.1',text)
-        self.assertIn('"0.0.0.0"',text)  # Unmanaged upstream networks retain their old behavior.
+        self.assertIn('"0.0.0.0"',text)
         with self.assertRaises(RuntimeError):transform_gvisor('unknown source layout')
     def test_unknown_manifest_entry_is_rejected(self):
         with self.assertRaises(RuntimeError): transform_manifest(MANIFEST.replace('.ui.SplashActivity', '.Changed'))
+    def test_warsaw_crash_recovery_profile_is_kept_in_overlay(self):
+        text=(ROOT/'android-overlay/app/src/main/java/app/agbot/android/LocalComputer.java').read_text()
+        self.assertIn('KernelModuleManager.loadAndVerify', text)
+        self.assertIn('ProtectedVM.PSEUDO_UNPROTECTED', text)
+        self.assertIn('Constants.PATH_BUILTIN_KERNEL', text)
+        self.assertIn('VmExitedException', text)
+        self.assertIn('exit 33', text)
 
 class PreparationTests(unittest.TestCase):
     def setUp(self):
@@ -104,7 +111,7 @@ class PreparationTests(unittest.TestCase):
         self.assertFalse((self.checkout / STATE).exists())
     def test_human_edit_survives(self):
         apply(self.checkout, self.commit, ROOT)
-        p = self.checkout / 'app/build.gradle.kts'; edit = p.read_text() + '\n// human change\n'; p.write_text(edit)
+        p = self.checkout / 'app/build.gradle.kts'; edit = p.read_text() + '\\n// human change\\n'; p.write_text(edit)
         with self.assertRaises(RuntimeError): apply(self.checkout, self.commit, ROOT)
         self.assertEqual(p.read_text(), edit)
     def test_untracked_user_file_is_preserved(self):
