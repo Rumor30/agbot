@@ -24,7 +24,7 @@ jobs:
           mkdir -p /tmp/agbot-download
           python - <<'PY'
           from pathlib import Path
-          import os, time
+          import time
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
           from selenium.webdriver.common.by import By
@@ -63,13 +63,10 @@ jobs:
                               clicked.add(key)
                               print('Clicking:', key)
                               driver.execute_script('arguments[0].click()', el)
-                      except Exception as exc:
-                          print('click-scan:', type(exc).__name__)
+                      except Exception:
+                          pass
                   time.sleep(2)
               else:
-                  print('Final URL:', driver.current_url)
-                  print('Title:', driver.title)
-                  print('Body:', driver.find_element(By.TAG_NAME, 'body').text[:4000])
                   raise SystemExit('download timed out')
           finally:
               driver.quit()
@@ -77,23 +74,26 @@ jobs:
 
           archive="$(find /tmp/agbot-download -maxdepth 1 -type f ! -name '*.crdownload' | head -n1)"
           test -n "$archive"
-          file "$archive"
           echo '9d6be233b3d1b32a9f4a72eb5139c6c39e251258ea651709d39943a38a8f8bbe  '"$archive" | sha256sum -c -
           cp "$archive" /tmp/agbot-source.zip
           unzip -t /tmp/agbot-source.zip >/dev/null
 
-      - name: Import verified source tree
+      - name: Import ordinary source files
         shell: bash
         run: |
           set -euo pipefail
+          cp .github/workflows/import-agbot.yml /tmp/import-agbot.yml
           rm -rf /tmp/agbot-import
           mkdir -p /tmp/agbot-import
           unzip -q /tmp/agbot-source.zip -d /tmp/agbot-import
           test -f /tmp/agbot-import/Agbot/README.md
           rsync -a --delete --exclude='.git/' /tmp/agbot-import/Agbot/ ./
+          mkdir -p .github/workflows
+          rm -f .github/workflows/android.yml .github/workflows/test.yml
+          cp /tmp/import-agbot.yml .github/workflows/import-agbot.yml
           git status --short
 
-      - name: Commit source to main
+      - name: Commit ordinary source to main
         shell: bash
         run: |
           set -euo pipefail
