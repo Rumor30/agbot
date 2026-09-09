@@ -47,7 +47,7 @@ if [[ ! -x "$RUNTIME/node/bin/node" ]]; then
   tar --extract --xz --file "$TMP/node.tar.xz" --directory "$RUNTIME/node" --strip-components=1 --no-same-owner
 fi
 [[ "$("$RUNTIME/node/bin/node" --version)" == "v$NODE_VERSION" ]] || { echo 'Installed Node differs from runtime.lock.json; review upgrade rather than replacing it silently.' >&2; exit 2; }
-export PATH="$RUNTIME/node/bin:/usr/local/bin:/usr/bin:/bin"
+export PATH="$RUNTIME/node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 if ! getent passwd agbot >/dev/null; then
   useradd --system --user-group --create-home --home-dir /home/agbot --shell /bin/bash agbot
 fi
