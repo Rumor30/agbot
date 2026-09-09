@@ -4,26 +4,101 @@ on:
   push:
     paths:
       - '.github/workflows/import-agbot.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  inspect:
+  import:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect Firestorage client API
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download source archive in a browser
+        shell: bash
         run: |
           set -euo pipefail
-          curl -fL 'https://firestorage.ai/_next/static/chunks/app/%28files%29/ja/f/page-4d19ae0a4ce39d79.js' -o /tmp/page.js
+          python -m pip install --disable-pip-version-check selenium
+          mkdir -p /tmp/agbot-download
           python - <<'PY'
           from pathlib import Path
-          import re
-          s=Path('/tmp/page.js').read_text(errors='replace')
-          print('length',len(s))
-          vals=[]
-          for pat in [r'https?[^"\']+', r'/api/[^"\']+', r'[^"\']{0,100}download[^"\']{0,200}', r'[^"\']{0,100}share[^"\']{0,200}', r'[^"\']{0,100}public[^"\']{0,200}']:
-              for x in re.findall(pat,s,re.I):
-                  if x not in vals: vals.append(x)
-          for x in vals[:200]: print(x[:1500])
+          import os, time
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.common.by import By
+
+          url = 'https://firestorage.ai/ja/f/L2H6TVyP_LIX'
+          out = Path('/tmp/agbot-download')
+          options = Options()
+          options.add_argument('--headless=new')
+          options.add_argument('--no-sandbox')
+          options.add_argument('--disable-dev-shm-usage')
+          options.add_argument('--disable-gpu')
+          options.add_experimental_option('prefs', {
+              'download.default_directory': str(out),
+              'download.prompt_for_download': False,
+              'download.directory_upgrade': True,
+              'safebrowsing.enabled': True,
+          })
+          driver = webdriver.Chrome(options=options)
+          clicked = set()
+          try:
+              driver.get(url)
+              deadline = time.time() + 90
+              while time.time() < deadline:
+                  files = [p for p in out.iterdir() if p.is_file() and not p.name.endswith('.crdownload')]
+                  if files:
+                      print('Downloaded:', [(p.name, p.stat().st_size) for p in files])
+                      break
+                  for el in driver.find_elements(By.CSS_SELECTOR, 'a,button'):
+                      try:
+                          text = (el.text or '').strip()
+                          key = (el.tag_name, text, el.get_attribute('href') or '')
+                          if key in clicked:
+                              continue
+                          low = text.lower()
+                          if ('download' in low or 'ダウンロード' in text or '下载' in text) and el.is_displayed() and el.is_enabled():
+                              clicked.add(key)
+                              print('Clicking:', key)
+                              driver.execute_script('arguments[0].click()', el)
+                      except Exception as exc:
+                          print('click-scan:', type(exc).__name__)
+                  time.sleep(2)
+              else:
+                  print('Final URL:', driver.current_url)
+                  print('Title:', driver.title)
+                  print('Body:', driver.find_element(By.TAG_NAME, 'body').text[:4000])
+                  raise SystemExit('download timed out')
+          finally:
+              driver.quit()
           PY
+
+          archive="$(find /tmp/agbot-download -maxdepth 1 -type f ! -name '*.crdownload' | head -n1)"
+          test -n "$archive"
+          file "$archive"
+          echo '9d6be233b3d1b32a9f4a72eb5139c6c39e251258ea651709d39943a38a8f8bbe  '"$archive" | sha256sum -c -
+          cp "$archive" /tmp/agbot-source.zip
+          unzip -t /tmp/agbot-source.zip >/dev/null
+
+      - name: Import verified source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/agbot-import
+          mkdir -p /tmp/agbot-import
+          unzip -q /tmp/agbot-source.zip -d /tmp/agbot-import
+          test -f /tmp/agbot-import/Agbot/README.md
+          rsync -a --delete --exclude='.git/' /tmp/agbot-import/Agbot/ ./
+          git status --short
+
+      - name: Commit source to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Import Agbot 0.1.0-dev.1 source'
+          git push origin HEAD:main
