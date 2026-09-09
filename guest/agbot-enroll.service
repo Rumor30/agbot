@@ -1,0 +1,23 @@
+# Agbot-managed service. SPDX-License-Identifier: GPL-3.0-or-later
+[Unit]
+Description=Agbot local console enrollment beacon
+After=agbot.service
+Requires=agbot.service
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/agbot/current/guest/enroll.py
+Restart=on-failure
+RestartSec=10
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+PrivateTmp=true
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# Root only reads the root-owned instance/cert and writes /dev/console. No remote RPC exists here.
+[Install]
+WantedBy=multi-user.target

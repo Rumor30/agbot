@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "distribution": "Ubuntu Minimal 24.04 LTS",
+  "release": "20260801",
+  "baseUrl": "https://cloud-images.ubuntu.com/minimal/releases/noble/release-20260801/",
+  "arm64": {
+    "file": "ubuntu-24.04-minimal-cloudimg-arm64.img",
+    "sha256": "3a42e0355636bcc4820af28f5bd2c9591502613ab238ad4fa6d4c3659c03d9cf"
+  },
+  "amd64": {
+    "file": "ubuntu-24.04-minimal-cloudimg-amd64.img",
+    "sha256": "b3064efb500d71d6ccbe619b1716062b803e285116e040627b430aaee14cced6"
+  }
+}

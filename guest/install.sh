@@ -69,15 +69,16 @@ runuser -u agbot -- env HOME=/home/agbot PATH="$PATH" "$CODEX_BIN" --version | g
 RELEASE="$(python3 - "$ROOT" <<'PY'
 import hashlib, pathlib, sys
 root=pathlib.Path(sys.argv[1]); h=hashlib.sha256()
-for p in sorted((root/'gateway/src').glob('*.mjs')):
+for p in sorted(list((root/'gateway/src').glob('*.mjs')) + [root/'guest/enroll.py']):
     h.update(p.name.encode()); h.update(p.read_bytes())
 print(h.hexdigest()[:20])
 PY
 )"
 DEST="$PREFIX/releases/$RELEASE"
 if [[ ! -d "$DEST" ]]; then
-  install -d -m 0755 "$DEST/gateway"
+  install -d -m 0755 "$DEST/gateway" "$DEST/guest"
   cp -R "$ROOT/gateway/src" "$DEST/gateway/src"
+  cp "$ROOT/guest/enroll.py" "$DEST/guest/enroll.py"
   cp "$ROOT/package.json" "$ROOT/LICENSE" "$DEST/"
   find "$DEST" -type d -exec chmod 0755 {} +
   find "$DEST" -type f -exec chmod 0644 {} +
@@ -90,6 +91,22 @@ if [[ ! -f /etc/agbot/guest.key ]]; then
     -keyout /etc/agbot/guest.key -out /etc/agbot/guest.crt
   chown root:agbot /etc/agbot/guest.key /etc/agbot/guest.crt
   chmod 0640 /etc/agbot/guest.key /etc/agbot/guest.crt
+fi
+if [[ -n "${AGBOT_SEED_FILE:-}" ]]; then
+  python3 - "$AGBOT_SEED_FILE" <<'SEED'
+import json, os, pathlib, pwd, re, sys
+seed=json.loads(pathlib.Path(sys.argv[1]).read_text())
+token=seed['bridgeToken']; instance=seed['instanceId']
+if not re.fullmatch(r'[A-Za-z0-9_-]{43}',token) or not re.fullmatch(r'[0-9a-f-]{36}',instance): raise SystemExit('Invalid instance identity')
+p=pathlib.Path('/var/lib/agbot/bridge.token')
+if p.exists() and p.read_text().strip()!=token: raise SystemExit('Refusing to replace existing token')
+if not p.exists():
+    with p.open('x') as f:f.write(token+'\n')
+    u=pwd.getpwnam('agbot');os.chown(p,u.pw_uid,u.pw_gid);p.chmod(0o600)
+i=pathlib.Path('/etc/agbot/instance-id')
+if i.exists() and i.read_text().strip()!=instance:raise SystemExit('Refusing changed instance ID')
+i.write_text(instance+'\n');i.chmod(0o644)
+SEED
 fi
 if [[ ! -f /var/lib/agbot/bridge.token ]]; then
   runuser -u agbot -- env HOME=/home/agbot AGBOT_DATA_DIR=/var/lib/agbot \
@@ -116,6 +133,11 @@ mv -Tf "$PREFIX/.current-$RELEASE-$$" "$PREFIX/current"
 install -m 0644 "$ROOT/guest/agbot.service" /etc/systemd/system/agbot.service
 systemctl daemon-reload
 systemctl enable --now agbot
+if [[ -f /etc/agbot/instance-id ]]; then
+  install -m 0644 "$ROOT/guest/agbot-enroll.service" /etc/systemd/system/agbot-enroll.service
+  systemctl daemon-reload
+  systemctl enable --now agbot-enroll
+fi
 HOST="${AGBOT_ADVERTISED_HOST:-$(ip -4 -o addr show scope global | awk 'NR==1 {split($4,a,"/"); print a[1]}')}"
 HOST="${HOST:-127.0.0.1}"
 PIN="$(openssl x509 -in /etc/agbot/guest.crt -outform DER | sha256sum | cut -d' ' -f1)"

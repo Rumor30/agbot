@@ -2,8 +2,11 @@
 import http from 'node:http';
 import https from 'node:https';
 import os from 'node:os';
+import fs from 'node:fs';
 import { invariant } from './errors.mjs';
 import { loopback, tokenMatches, redactor } from './security.mjs';
+import { ProviderClient } from './providers.mjs';
+import { validateProfile } from './security.mjs';
 import { WorkspaceTools } from './tools.mjs';
 const MAX_BODY = 1024 * 1024;
 
@@ -29,6 +32,7 @@ export function createGateway({ engine, store, codex, token, host = '127.0.0.1',
   invariant(typeof token === 'string' && token.length >= 32, 'A bridge token of at least 32 characters is required');
   invariant(loopback(host) || tls?.key && tls?.cert, 'Non-loopback binding requires TLS', 'TLS_REQUIRED');
   const sanitize = redactor([token]);
+  const instanceId = fs.existsSync('/etc/agbot/instance-id') ? fs.readFileSync('/etc/agbot/instance-id', 'utf8').trim() : null;
   const handler = async (req, res) => {
     try {
       invariant(!req.headers.origin, 'Browser origins are not allowed on the native bridge', 'ORIGIN_REFUSED', 403);
@@ -39,11 +43,21 @@ export function createGateway({ engine, store, codex, token, host = '127.0.0.1',
       const route = url.pathname.split('/').filter(Boolean).map(decodeURIComponent);
       invariant(route[0] === 'v1', 'Not found', 'NOT_FOUND', 404);
       if (req.method === 'GET' && route.length === 2 && route[1] === 'health') {
-        send(res, 200, { ok: true, service: 'agbot', version: '0.1.0-dev.1', arch: process.arch,
+        send(res, 200, { ok: true, service: 'agbot', version: '0.2.0-dev.1', instanceId, arch: process.arch,
           platform: process.platform, uid: process.getuid?.(), guestMemoryBytes: os.totalmem(),
           note: 'Gateway health is not proof that Android/Gunyah boot has been verified.' }); return;
       }
-      if (route[1] === 'codex' && route.length === 3) {
+      if (route[1] === 'providers' && route[2] === 'probe' && route.length === 3 && req.method === 'POST') {
+        const b = await bodyJson(req); const profile = validateProfile(b.profile);
+        invariant(profile.mode !== 'codex', 'Use the Codex account endpoint for OAuth');
+        profile.maxOutputTokens = 256;
+        const result = await new ProviderClient({ timeoutMs: 45000 }).round(profile,
+          [{ role: 'user', content: 'Connection test only. Reply with OK. Do not call any tools.' }]);
+        // No calls are executed and no account values/response body are logged or persisted.
+        send(res, 200, { ok: true, protocol: profile.mode, text: redactor([token, profile.apiKey])(result.text).slice(0, 512),
+          toolCallsNotExecuted: result.calls.length, usage: result.usage }); return;
+      }
+      if (route[1] === 'codex'  && route.length === 3) {
         invariant(codex, 'Codex bridge is unavailable', 'CODEX_UNAVAILABLE', 503);
         if (route[2] === 'account' && req.method === 'GET') { send(res, 200, await codex.account()); return; }
         if (route[2] === 'models' && req.method === 'GET') { send(res, 200, await codex.models()); return; }
