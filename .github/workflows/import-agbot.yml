@@ -10,39 +10,24 @@ permissions:
   contents: write
 
 jobs:
-  import:
-    if: github.actor != 'github-actions[bot]'
+  inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download source archive
+      - name: Inspect share page
         run: |
           set -euo pipefail
-          curl -fL --retry 3 'https://firestorage.ai/ja/f/L2H6TVyP_LIX' -o /tmp/agbot-source.zip
-          file /tmp/agbot-source.zip
-          unzip -t /tmp/agbot-source.zip >/dev/null
-
-      - name: Import source tree
-        run: |
-          set -euo pipefail
-          rm -rf /tmp/agbot-import
-          mkdir -p /tmp/agbot-import
-          unzip -q /tmp/agbot-source.zip -d /tmp/agbot-import
-          test -f /tmp/agbot-import/Agbot/README.md
-          rsync -a --delete --exclude='.git/' /tmp/agbot-import/Agbot/ ./
-          rm -f .github/workflows/import-agbot.yml
-
-      - name: Verify archive checksum
-        run: |
-          echo '9d6be233b3d1b32a9f4a72eb5139c6c39e251258ea651709d39943a38a8f8bbe  /tmp/agbot-source.zip' | sha256sum -c -
-
-      - name: Commit imported source
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          git commit -m 'Import Agbot 0.1.0-dev.1 source'
-          git push origin HEAD:main
+          curl -fL --retry 3 'https://firestorage.ai/ja/f/L2H6TVyP_LIX' -o /tmp/page.html
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('/tmp/page.html').read_text(errors='replace')
+          print('length', len(s))
+          for pat in [r'https?://[^"\'<> ]+', r'/api/[^"\'<> ]+', r'[^"\'<> ]*download[^"\'<> ]*', r'[^"\'<> ]*01a0856fa14d71d48dc5c4be61c4fd30[^"\'<> ]*', r'[^"\'<> ]*5XexhnvgpMitiNOQ[^"\'<> ]*']:
+              print('PATTERN', pat)
+              vals=[]
+              for m in re.findall(pat, s, re.I):
+                  if m not in vals:
+                      vals.append(m)
+              for v in vals[:80]:
+                  print(v[:1000])
+          PY
