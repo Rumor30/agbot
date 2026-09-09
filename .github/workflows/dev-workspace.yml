@@ -7,25 +7,15 @@ permissions:
   contents: read
 jobs:
   sources:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch exact upstream source (no runtime download)
-        run: |
-          python - <<'PY'
-          import json, pathlib, subprocess
-          lock = json.loads(pathlib.Path('upstream.lock.json').read_text())['droidvm']
-          subprocess.run(['git','clone','--filter=blob:none','--no-checkout',lock['repository'],'/tmp/droidvm-src'],check=True)
-          subprocess.run(['git','-C','/tmp/droidvm-src','checkout','--detach',lock['commit']],check=True)
-          PY
-      - name: Archive public source only
+      - name: Archive exact current source without private runtime files
         run: |
           mkdir -p workspace
           git archive --format=tar.gz --prefix=agbot/ HEAD > workspace/agbot-source.tar.gz
-          git -C /tmp/droidvm-src archive --format=tar.gz --prefix=droidvm/ HEAD > workspace/droidvm-source.tar.gz
           git rev-parse HEAD > workspace/agbot-commit.txt
-          git -C /tmp/droidvm-src rev-parse HEAD > workspace/droidvm-commit.txt
       - uses: actions/upload-artifact@v7
         with:
           name: development-source-workspace
