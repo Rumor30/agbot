@@ -4,7 +4,6 @@ on:
   push:
     paths:
       - '.github/workflows/import-agbot.yml'
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -13,20 +12,18 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect share page internals
+      - name: Inspect Firestorage client API
         run: |
           set -euo pipefail
-          curl -fL --retry 3 'https://firestorage.ai/ja/f/L2H6TVyP_LIX' -o /tmp/page.html
+          curl -fL 'https://firestorage.ai/_next/static/chunks/app/%28files%29/ja/f/page-4d19ae0a4ce39d79.js' -o /tmp/page.js
           python - <<'PY'
           from pathlib import Path
-          s=Path('/tmp/page.html').read_text(errors='replace')
-          print('length', len(s))
-          for needle in ['L2H6TVyP_LIX','FileDownloadPreparing','_next/static','__next_f','download','folder','public','file']:
-              print('\n===',needle,'===')
-              start=0; count=0
-              while count<12:
-                  i=s.lower().find(needle.lower(), start)
-                  if i<0: break
-                  print(s[max(0,i-600):min(len(s),i+1200)].replace('><','>\n<'))
-                  start=i+len(needle); count+=1
+          import re
+          s=Path('/tmp/page.js').read_text(errors='replace')
+          print('length',len(s))
+          vals=[]
+          for pat in [r'https?[^"\']+', r'/api/[^"\']+', r'[^"\']{0,100}download[^"\']{0,200}', r'[^"\']{0,100}share[^"\']{0,200}', r'[^"\']{0,100}public[^"\']{0,200}']:
+              for x in re.findall(pat,s,re.I):
+                  if x not in vals: vals.append(x)
+          for x in vals[:200]: print(x[:1500])
           PY
